@@ -1,0 +1,41 @@
+services:
+  # PostgreSQL database service
+  postgres:
+    image: postgres:15
+    
+    # Environment variables for PostgreSQL initialization
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: library
+    
+    # Mount volumes for data persistence and configuration
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+    # Allows connections to localhost:5432 from your machine
+    ports:
+      - "5433:5432"
+    
+    # Allows other services to communicate with postgres by service name
+    networks:
+      - library-network
+    
+    # Health check to verify PostgreSQL is ready to accept connections
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+# Define named volumes for persistent data storage
+volumes:
+  pgdata:
+
+# Define custom networks for service communication
+networks:
+  library-network:
+    # To allow containers to communicate with each other 
+    # within the network and isolate from other containers
+    driver: bridge

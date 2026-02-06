@@ -1,0 +1,52 @@
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.database import Base, engine
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """
+    Lifespan context manager for FastAPI application.
+    Handles startup and shutdown events.
+    """
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
+
+# Initialize FastAPI application
+app = FastAPI(
+    title="Neighborhood Library API",
+    description="API for managing library books, members, and borrowing operations",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+# Configure CORS to allow frontend to communicate with backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # TODO: Replace with specific frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/", include_in_schema=False)
+async def root():
+    """Root endpoint to verify API is running"""
+    return {
+        "message": "Welcome to Neighborhood Library API",
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
+@app.get("/health", include_in_schema=False)
+async def health_check():
+    """Health check endpoint for monitoring"""
+    return {"status": "healthy"}
