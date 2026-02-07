@@ -1,18 +1,11 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from enum import Enum
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-
-
-class Status(str, Enum):
-    BORROWED = "borrowed"
-    RETURNED = "returned"
-    OVERDUE = "overdue"
 
 
 class Book(Base):
@@ -52,9 +45,6 @@ class Borrowing(Base):
     returned_date: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
-    status: Mapped[Status] = mapped_column(
-        String, default=lambda: Status.BORROWED.value
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
@@ -72,6 +62,10 @@ class Borrowing(Base):
         if self.borrowed_date:
             return self.borrowed_date + timedelta(days=14)
         return None
+
+    @property
+    def status(self) -> str:
+        return "RETURNED" if self.returned_date else "BORROWED"
 
 
 class Member(Base):

@@ -4,7 +4,7 @@ from logging.config import fileConfig
 
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import async_engine_from_config, AsyncConnection
 
 from alembic import context
 
@@ -71,6 +71,9 @@ def run_migrations_online() -> None:
 
     """
     configuration = config.get_section(config.config_ini_section)
+    if configuration is None:
+        raise ValueError("Configuration section not found")
+
     configuration["sqlalchemy.url"] = get_url()
     connectable = async_engine_from_config(
         configuration,
@@ -78,7 +81,7 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
 
-    async def do_run_migrations(connection: Connection) -> None:
+    async def do_run_migrations(connection: AsyncConnection) -> None:
         await connection.run_sync(do_migrations)
 
     def do_migrations(connection: Connection) -> None:

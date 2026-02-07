@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import Base, engine
+from app.routers import books, borrowings, members
 
 
 @asynccontextmanager
@@ -34,6 +35,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(books.router, prefix="/api/books", tags=["books"])
+app.include_router(members.router, prefix="/api/members", tags=["members"])
+app.include_router(borrowings.router, prefix="/api/borrowings", tags=["borrowings"])
 
 
 @app.get("/", include_in_schema=False)

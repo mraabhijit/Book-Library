@@ -31,7 +31,7 @@
 ┌─────────────────┐         ┌──────────────────────┐         ┌─────────────────┐
 │     BOOKS       │         │  BORROWING_RECORDS   │         │    MEMBERS      │
 ├─────────────────┤         ├──────────────────────┤         ├─────────────────┤
-│ id (PK)         │◄───────┤ book_id (FK)         │         │ id (PK)         │
+│ id (PK)         │◄────────┤ book_id (FK)         │         │ id (PK)         │
 │ title           │         │ member_id (FK)       ├────────►│ name            │
 │ author          │         │ borrowed_date        │         │ email (UNIQUE)  │
 │ isbn            │         │ due_date             │         │ phone           │
@@ -97,7 +97,6 @@ CREATE INDEX idx_borrowing_status ON borrowing_records(status);
 - ✅ **Keep borrowing history** - Don't delete records when returned (set `returned_date`)
 - ✅ **`is_available` flag on books** - Quick lookup without JOIN
 - ✅ **Email as unique identifier** - Natural key for members
-- ✅ **Status enum** - Track borrowed/returned/overdue states
 - ✅ **Indexes** - Optimize common queries (by member, by book, by status)
 - ✅ **ON DELETE RESTRICT** - Prevent accidental data loss
 
@@ -115,17 +114,9 @@ backend/
 │   ├── config.py               # Environment config (DB URL, etc.)
 │   ├── database.py             # Database connection & session
 │   │
-│   ├── models/                 # SQLAlchemy ORM models
-│   │   ├── __init__.py
-│   │   ├── book.py
-│   │   ├── member.py
-│   │   └── borrowing_record.py
+│   ├── models.py               # SQLAlchemy ORM models
 │   │
-│   ├── schemas/                # Pydantic schemas (request/response)
-│   │   ├── __init__.py
-│   │   ├── book.py
-│   │   ├── member.py
-│   │   └── borrowing.py
+│   ├── schemas.py              # Pydantic schemas (request/response)
 │   │
 │   ├── routers/                # API endpoints
 │   │   ├── __init__.py
@@ -133,11 +124,6 @@ backend/
 │   │   ├── members.py
 │   │   └── borrowing.py
 │   │
-│   ├── crud/                   # Database operations
-│   │   ├── __init__.py
-│   │   ├── book.py
-│   │   ├── member.py
-│   │   └── borrowing.py
 │   │
 │   └── exceptions.py           # Custom exceptions
 │
@@ -148,7 +134,8 @@ backend/
 ├── tests/                      # Unit tests (optional for take-home)
 │   └── __init__.py
 │
-├── requirements.txt
+├── uv.lock
+├── pyproject.toml
 ├── .env.example
 ├── Dockerfile
 └── README.md
@@ -156,11 +143,11 @@ backend/
 
 ### Layer Responsibilities:
 
+- **`database.py`** - Database connections (Sessions, Base metadata)
 - **`main.py`** - App initialization, CORS, middleware
-- **`models/`** - SQLAlchemy ORM models (database tables)
-- **`schemas/`** - Pydantic models (API validation)
+- **`models.py`** - SQLAlchemy ORM models (database tables)
+- **`schemas.py`** - Pydantic models (API validation)
 - **`routers/`** - API endpoints (HTTP handlers)
-- **`crud/`** - Database operations (separation of concerns)
 - **`exceptions.py`** - Custom exceptions (BookNotAvailable, MemberNotFound, etc.)
 
 ---
@@ -173,31 +160,31 @@ backend/
 
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| GET | `/books` | List all books | - | `Book[]` |
-| GET | `/books/{id}` | Get book by ID | - | `Book` |
-| POST | `/books` | Create new book | `BookCreate` | `Book` |
-| PUT | `/books/{id}` | Update book | `BookUpdate` | `Book` |
+| GET | `/books` | List all books | - | `BookResponse[]` |
+| GET | `/books/{id}` | Get book by ID | - | `BookResponse` |
+| POST | `/books` | Create new book | `BookCreate` | `BookResponse` |
+| PUT | `/books/{id}` | Update book | `BookUpdate` | `BookResponse` |
 | DELETE | `/books/{id}` | Delete book | - | `204 No Content` |
 
 ### Members Endpoints:
 
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| GET | `/members` | List all members | - | `Member[]` |
-| GET | `/members/{id}` | Get member by ID | - | `Member` |
-| POST | `/members` | Create new member | `MemberCreate` | `Member` |
-| PUT | `/members/{id}` | Update member | `MemberUpdate` | `Member` |
+| GET | `/members` | List all members | - | `MemberResponse[]` |
+| GET | `/members/{id}` | Get member by ID | - | `MemberResponse` |
+| POST | `/members` | Create new member | `MemberCreate` | `MemberResponse` |
+| PUT | `/members/{id}` | Update member | `MemberUpdate` | `MemberResponse` |
 | DELETE | `/members/{id}` | Delete member | - | `204 No Content` |
 
 ### Borrowing Endpoints:
 
 | Method | Endpoint | Description | Request Body | Response |
 |--------|----------|-------------|--------------|----------|
-| POST | `/borrow` | Borrow a book | `BorrowRequest` | `BorrowingRecord` |
-| POST | `/return` | Return a book | `ReturnRequest` | `BorrowingRecord` |
-| GET | `/borrowed` | List all currently borrowed books | - | `BorrowingRecord[]` |
-| GET | `/members/{id}/borrowed` | Get member's borrowed books | - | `BorrowingRecord[]` |
-| GET | `/borrowing-history` | Get all borrowing history | - | `BorrowingRecord[]` |
+| POST | `/borrowings/borrow` | Borrow a book | `BorrowRequest` | `BorrowResponse` |
+| PUT | `/borrowings/return` | Return a book | `ReturnRequest` | `ReturnResponse` |
+| GET | `/borrowings` | List all currently borrowed books | - | `BorrowResponse[]` |
+| GET | `/borrowings/members/{id}` | Get member's borrowed books | - | `BorrowResponse[]` |
+| GET | `/borrowings/history` | Get all borrowing history | - | `BorrowResponse[]` |
 
 ### Sample Request/Response:
 
@@ -221,12 +208,10 @@ backend/
   "returned_date": null,
   "status": "borrowed",
   "book": {
-    "id": 1,
     "title": "The Great Gatsby",
     "author": "F. Scott Fitzgerald"
   },
   "member": {
-    "id": 5,
     "name": "John Doe",
     "email": "john@example.com"
   }
