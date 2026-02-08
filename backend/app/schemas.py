@@ -86,7 +86,7 @@ class ReturnResponse(ReturnRequest):
 class StaffCreate(BaseModel):
     username: str = Field(min_length=1, max_length=50)
     email: EmailStr = Field(max_length=200)
-    full_name: str = Field(default=None, min_length=1, max_length=100)
+    full_name: str | None = Field(default=None, min_length=1, max_length=100)
     password: str = Field(min_length=8)
 
 

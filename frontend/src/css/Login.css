@@ -1,0 +1,121 @@
+/* Login page container */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 70px); /* Subtract header height */
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+/* Login card */
+.login-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Title */
+.login-title {
+  margin: 0 0 30px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+/* Form */
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Form group */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #555;
+}
+
+/* Form input */
+.form-input {
+  padding: 12px 16px;
+  font-size: 14px;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: #7DD3E8;
+  box-shadow: 0 0 0 3px rgba(125, 211, 232, 0.2);
+}
+
+/* Submit button */
+.submit-button {
+  padding: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  background-color: #7DD3E8;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 10px;
+}
+
+.submit-button:hover {
+  background-color: #5fc4dd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.submit-button:active {
+  transform: translateY(0);
+}
+
+.submit-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Error message */
+.error-message {
+  color: #d32f2f;
+  font-size: 14px;
+  text-align: center;
+  padding: 10px;
+  background-color: #ffebee;
+  border-radius: 6px;
+}
+
+/* Redirect text */
+.redirect-text {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 14px;
+  color: #666;
+}
+
+.redirect-link {
+  color: #7DD3E8;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.redirect-link:hover {
+  text-decoration: underline;
+}

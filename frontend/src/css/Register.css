@@ -1,0 +1,38 @@
+/* Register page container */
+.register-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: calc(100vh - 70px);
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+/* Register card */
+.register-card {
+  background: white;
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+}
+
+/* Title */
+.register-title {
+  margin: 0 0 30px 0;
+  font-size: 28px;
+  font-weight: 600;
+  color: #333;
+  text-align: center;
+}
+
+/* Form */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Reuse form styles from Login.css */
+/* The form-group, form-input, submit-button, error-message, redirect-text, redirect-link classes are the same */
