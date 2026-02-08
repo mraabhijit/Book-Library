@@ -85,3 +85,16 @@ class Member(Base):
     )
 
     borrowings: Mapped[list[Borrowing]] = relationship(back_populates="member")
+
+
+class Staff(Base):
+    __tablename__ = "staffs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    username: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
+    email: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(100), nullable=False)
+    full_name: Mapped[str] = mapped_column(String(100))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )

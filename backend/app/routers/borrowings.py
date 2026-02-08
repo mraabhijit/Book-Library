@@ -15,13 +15,15 @@ from app.schemas import (
     ReturnRequest,
     ReturnResponse,
 )
-
+from app.routers.auth import CurrentUser
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[BorrowResponse])
-async def get_current_borrowing_records(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_current_borrowing_records(
+    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+):
     records = await db.execute(
         select(models.Borrowing)
         .options(selectinload(models.Borrowing.book))
@@ -34,7 +36,9 @@ async def get_current_borrowing_records(db: Annotated[AsyncSession, Depends(get_
 
 @router.get("/members/{member_id}", response_model=list[BorrowResponse])
 async def get_borrowing_records_by_member_id(
-    member_id: int, db: Annotated[AsyncSession, Depends(get_db)]
+    member_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if member_id <= 0:
         raise HTTPException(
@@ -62,7 +66,9 @@ async def get_borrowing_records_by_member_id(
 
 
 @router.get("/history", response_model=list[BorrowResponse])
-async def get_borrowing_records(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_borrowing_records(
+    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+):
     records = await db.execute(
         select(models.Borrowing)
         .options(selectinload(models.Borrowing.book))
@@ -74,7 +80,9 @@ async def get_borrowing_records(db: Annotated[AsyncSession, Depends(get_db)]):
 
 @router.post("/borrow", response_model=BorrowResponse)
 async def borrow_book(
-    borrow_request: BorrowRequest, db: Annotated[AsyncSession, Depends(get_db)]
+    borrow_request: BorrowRequest,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
         select(models.Book).where(models.Book.id == borrow_request.book_id)
@@ -123,7 +131,9 @@ async def create_borrowing_record(
 
 @router.put("/return", response_model=ReturnResponse)
 async def return_book(
-    return_request: ReturnRequest, db: Annotated[AsyncSession, Depends(get_db)]
+    return_request: ReturnRequest,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     record = await get_borrowing_record(return_request, db)
     if not record:

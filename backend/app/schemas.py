@@ -81,3 +81,23 @@ class ReturnResponse(ReturnRequest):
     book: BookResponse
     member: MemberResponse
     returned_date: datetime
+
+
+class StaffCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    email: EmailStr = Field(max_length=200)
+    full_name: str = Field(default=None, min_length=1, max_length=100)
+    password: str = Field(min_length=8)
+
+
+class StaffResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    username: str
+    email: EmailStr
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str

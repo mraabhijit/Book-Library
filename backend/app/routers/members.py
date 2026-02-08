@@ -8,20 +8,25 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.database import get_db
 from app.schemas import MemberCreate, MemberResponse, MemberUpdate
+from app.routers.auth import CurrentUser
 
 
 router = APIRouter()
 
 
 @router.get("", response_model=list[MemberResponse])
-async def get_members(db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_members(
+    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+):
     result = await db.execute(select(models.Member))
     return result.scalars().all()
 
 
 @router.get("/{member_id}", response_model=MemberResponse)
 async def get_member_by_id(
-    member_id: int, db: Annotated[AsyncSession, Depends(get_db)]
+    member_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if member_id <= 0:
         raise HTTPException(
@@ -42,7 +47,9 @@ async def get_member_by_id(
 
 @router.post("", response_model=MemberResponse)
 async def create_member(
-    member: MemberCreate, db: Annotated[AsyncSession, Depends(get_db)]
+    member: MemberCreate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     result = await db.execute(
         select(models.Member).where(
@@ -76,7 +83,10 @@ async def create_member(
 
 @router.put("/{member_id}", response_model=MemberResponse)
 async def update_member(
-    member_id: int, member: MemberUpdate, db: Annotated[AsyncSession, Depends(get_db)]
+    member_id: int,
+    member: MemberUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if member_id <= 0:
         raise HTTPException(
@@ -129,7 +139,11 @@ async def update_member(
 
 
 @router.delete("/{member_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_member(member_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+async def delete_member(
+    member_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     if member_id <= 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

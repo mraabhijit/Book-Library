@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import models
 from app.database import get_db
 from app.schemas import BookCreate, BookResponse, BookUpdate
+from app.routers.auth import CurrentUser
 
 
 router = APIRouter()
@@ -30,7 +31,11 @@ async def get_books(
 
 
 @router.get("/{book_id}", response_model=BookResponse)
-async def get_book_by_id(book_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+async def get_book_by_id(
+    book_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     if book_id <= 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -50,7 +55,11 @@ async def get_book_by_id(book_id: int, db: Annotated[AsyncSession, Depends(get_d
 
 
 @router.post("", response_model=BookResponse)
-async def create_book(book: BookCreate, db: Annotated[AsyncSession, Depends(get_db)]):
+async def create_book(
+    book: BookCreate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     result = await db.execute(select(models.Book).where(models.Book.isbn == book.isbn))
     existing_book = result.scalars().first()
     if existing_book:
@@ -69,7 +78,10 @@ async def create_book(book: BookCreate, db: Annotated[AsyncSession, Depends(get_
 
 @router.put("/{book_id}", response_model=BookResponse)
 async def update_book(
-    book_id: int, book: BookUpdate, db: Annotated[AsyncSession, Depends(get_db)]
+    book_id: int,
+    book: BookUpdate,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
 ):
     if book_id <= 0:
         raise HTTPException(
@@ -95,7 +107,11 @@ async def update_book(
 
 
 @router.delete("/{book_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_book(book_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
+async def delete_book(
+    book_id: int,
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
     if book_id <= 0:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,

@@ -1,16 +1,15 @@
-import os
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+from app.config import settings
 
-SQLALCHEMY_DATABASE_URL = os.getenv(
-    "DATABASE_URL", "postgresql+asyncpg://postgres:password@localhost:5433/library"
-)
+
+SQLALCHEMY_DATABASE_URL = settings.database_url
 
 
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL,
-    echo=True,  # enable SQL query logging
+    echo=False,  # disable SQL query logging
     pool_pre_ping=True,  # ensure connections are alive before using
     pool_size=5,
     max_overflow=10,
