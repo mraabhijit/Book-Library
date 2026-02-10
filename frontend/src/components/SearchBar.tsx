@@ -1,18 +1,20 @@
+'use client';
+
 import { useState } from 'react';
-import '../css/SearchBar.css';
-import BookTable from './BookTable';
-import { booksAPI } from '../services/api';
+import BookTable from '@/components/BookTable';
+import { booksAPI } from '@/lib/api';
+import { Book } from '@/lib/types';
 
 function SearchBar() {
   const [titleInput, setTitleInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
-  const [books, setBooks] = useState([]);
+  const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async () => {
     // Build the query parameters
-    const params = {};
+    const params: any = {};
 
     if (titleInput.trim()) {
       params.title = titleInput.trim();
@@ -30,7 +32,7 @@ function SearchBar() {
 
       console.log('search results:', response.data);
       setBooks(response.data);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error fetching books:', err);
       setError(err.response?.data?.message || err.message);
     } finally {

@@ -1,13 +1,14 @@
-import '../../css/Admin.css';
+'use client';
+
 import { useState, useEffect } from 'react';
-import { membersAPI } from '../../services/api';
+import { membersAPI } from '@/lib/api';
 
 function MemberSection() {
-  const [activeAction, setActiveAction] = useState(null);
-  const [members, setMembers] = useState([]);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [members, setMembers] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [memberId, setMemberId] = useState('');
   const [name, setName] = useState('');
@@ -31,7 +32,7 @@ function MemberSection() {
       const response = await membersAPI.getMembers();
       setMembers(response.data);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -47,7 +48,7 @@ function MemberSection() {
   };
 
   // Create member
-  const handleCreateMember = async (e) => {
+  const handleCreateMember = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -59,7 +60,7 @@ function MemberSection() {
       setSuccess('Member created successfully!');
       resetForm();
       fetchMembers();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -67,11 +68,11 @@ function MemberSection() {
   };
 
   // Update Member
-  const handleUpdateMember = async (e) => {
+  const handleUpdateMember = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const updateData = {};
+      const updateData: any = {};
       if (name) updateData.name = name;
       if (email) updateData.email = email;
       if (phone) updateData.phone = phone;
@@ -82,11 +83,11 @@ function MemberSection() {
         return;
       }
 
-      await membersAPI.updateMember(memberId, updateData);
+      await membersAPI.updateMember(parseInt(memberId), updateData);
       setSuccess('Member updated successfully!');
       resetForm();
       fetchMembers();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -94,15 +95,15 @@ function MemberSection() {
   };
 
   // Search Member By ID
-  const handleSearchMemberById = async (e) => {
+  const handleSearchMemberById = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await membersAPI.getMember(memberId);
+      const response = await membersAPI.getMember(parseInt(memberId));
       setMembers([response.data]);
       setSuccess('Member found!');
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -110,17 +111,17 @@ function MemberSection() {
   };
 
   // Delete a Member
-  const handleDeleteMember = async (e) => {
+  const handleDeleteMember = async (e: any) => {
     e.preventDefault();
     if (!window.confirm('Are you sure you want to delete this member?')) return;
 
     setLoading(true);
     try {
-      await membersAPI.deleteMember(memberId);
+      await membersAPI.deleteMember(parseInt(memberId));
       setSuccess('Member successfully deleted!');
       resetForm();
       fetchMembers();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);

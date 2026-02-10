@@ -1,17 +1,18 @@
-import '../../css/Admin.css';
+'use client';
+
 import { useState, useEffect } from 'react';
-import { borrowingsAPI } from '../../services/api';
+import { borrowingsAPI } from '@/lib/api';
 
 function BorrowingSection() {
-  const [activeAction, setActiveAction] = useState(null);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
 
   // Data state
-  const [borrowings, setBorrowings] = useState([]);
+  const [borrowings, setBorrowings] = useState<any[]>([]);
 
   // UI States
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Form data - Borrowings
   const [bookId, setBookId] = useState('');
@@ -37,7 +38,7 @@ function BorrowingSection() {
       const response = await borrowingsAPI.getAllBorrowings();
       setBorrowings(response.data);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -51,7 +52,7 @@ function BorrowingSection() {
       const response = await borrowingsAPI.getCurrentBorrowings();
       setBorrowings(response.data);
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -67,7 +68,7 @@ function BorrowingSection() {
   };
 
   // Borrow a book
-  const handleBorrowBook = async (e) => {
+  const handleBorrowBook = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -78,7 +79,7 @@ function BorrowingSection() {
       setSuccess('Book borrowed successfully!');
       resetForm();
       fetchCurrentBorrowings();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -86,7 +87,7 @@ function BorrowingSection() {
   };
 
   // Return a book
-  const handleReturnBook = async (e) => {
+  const handleReturnBook = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -97,7 +98,7 @@ function BorrowingSection() {
       setSuccess('Book returned successfully!');
       resetForm();
       fetchCurrentBorrowings();
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -105,15 +106,17 @@ function BorrowingSection() {
   };
 
   // Search borrowings by member ID
-  const handleSearchByMember = async (e) => {
+  const handleSearchByMember = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await borrowingsAPI.getBorrowingsByMember(memberId);
+      const response = await borrowingsAPI.getBorrowingsByMember(
+        parseInt(memberId),
+      );
       setBorrowings(response.data);
       setSuccess('Borrowing records found!');
       setError(null);
-    } catch (err) {
+    } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -121,7 +124,7 @@ function BorrowingSection() {
   };
 
   // Format date for display
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null | undefined): string => {
     if (!dateString) return '-';
     return new Date(dateString).toLocaleDateString('en-IN', {
       year: 'numeric',
@@ -258,7 +261,9 @@ function BorrowingSection() {
                   <td>
                     <span
                       className={
-                        borrowing.returned_date ? 'status-returned' : 'status-borrowed'
+                        borrowing.returned_date
+                          ? 'status-returned'
+                          : 'status-borrowed'
                       }
                     >
                       {borrowing.returned_date ? 'Returned' : 'Borrowed'}

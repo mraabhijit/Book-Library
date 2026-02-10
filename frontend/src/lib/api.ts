@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const baseURL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
+const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api';
 
 console.log('API Base URL:', baseURL);
 
@@ -14,7 +14,7 @@ const api = axios.create({
 
 api.interceptors.request.use(
     (config) => {
-        const token = localStorage.getItem('authToken');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
@@ -36,7 +36,6 @@ api.interceptors.response.use(
 );
 
 // Books API
-
 export const booksAPI = {
     // get all books with optional filters
     getBooks: (params = {}) => {
@@ -44,37 +43,36 @@ export const booksAPI = {
     },
 
     // get single book by ID
-    getBook: (id) => {
+    getBook: (id: number) => {
         return api.get(`/books/${id}`);
     },
 
     // create book
-    createBook: (bookData) => {
+    createBook: (bookData: any) => {
         return api.post('/books/', bookData);
     },
 
     // update a book
-    updateBook: (id, bookData) => {
+    updateBook: (id: number, bookData: any) => {
         return api.put(`/books/${id}`, bookData);
     },
 
     // delete a book
-    deleteBook: (id) => {
+    deleteBook: (id: number) => {
         return api.delete(`/books/${id}`);
     }
 };
 
 // Authentication API
-
 export const authAPI = {
     // Register new user
-    register: (userData) => {
+    register: (userData: any) => {
         return api.post("/auth/register", userData);
     },
 
     // Login user
-    login: (credentials) => {
-        // form data for auth2
+    login: (credentials: { username: string; password: string }) => {
+        // form data for oauth2
         const formData = new FormData();
         formData.append('username', credentials.username);
         formData.append('password', credentials.password);
@@ -89,7 +87,6 @@ export const authAPI = {
 };
 
 // Members API
-
 export const membersAPI = {
     // Get all members
     getMembers: (params = {}) => {
@@ -97,28 +94,27 @@ export const membersAPI = {
     },
 
     // Get member by ID
-    getMember: (id) => {
+    getMember: (id: number) => {
         return api.get(`/members/${id}`);
     },
 
     // Create a member
-    createMember: (memberData) => {
+    createMember: (memberData: any) => {
         return api.post('/members/', memberData);
     },
 
     // Update a member
-    updateMember: (id, memberData) => {
+    updateMember: (id: number, memberData: any) => {
         return api.put(`/members/${id}`, memberData);
     },
 
     // Delete a member
-    deleteMember: (id) => {
+    deleteMember: (id: number) => {
         return api.delete(`/members/${id}`);
     }
 };
 
 // Borrowings API
-
 export const borrowingsAPI = {
     // Get all borrowings
     getAllBorrowings: () => {
@@ -131,17 +127,17 @@ export const borrowingsAPI = {
     },
 
     // Get borrowings by Member
-    getBorrowingsByMember: (memberId) => {
+    getBorrowingsByMember: (memberId: number) => {
         return api.get(`/borrowings/members/${memberId}`);
     },
 
     // Borrow a book
-    borrowBook: (borrowData) => {
+    borrowBook: (borrowData: any) => {
         return api.post('/borrowings/borrow', borrowData);
     },
 
     // Return a book
-    returnBook: (returnData) => {
+    returnBook: (returnData: any) => {
         return api.put('/borrowings/return', returnData);
     }
 };

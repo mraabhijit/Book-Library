@@ -74,3 +74,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Vite code
+frontend-vite/*
+
+# .next
+.next/

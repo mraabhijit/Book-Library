@@ -1,9 +1,24 @@
+'use client';
+
 import { createContext, useState, useContext, useEffect } from 'react';
-import { authAPI } from '../services/api';
+import { authAPI } from '@/lib/api';
 
-const AuthContext = createContext(null);
+interface AuthContextType {
+  user: any;
+  loading: boolean;
+  login: (token: string, userData: any) => void;
+  logout: () => void;
+  checkAuth: () => Promise<void>;
+  isAuthenticated: boolean;
+}
 
-export function AuthProvider({ children }) {
+interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+const AuthContext = createContext<AuthContextType | null>(null);
+
+export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -18,6 +33,15 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await authAPI.getCurrentUser();
+      setUser(response.data);
+    } catch (err: any) {
+      console.error('Error fetching user:', err);
+    }
+  };
+
   const checkAuth = async () => {
     if (initialized) return;
 
@@ -31,7 +55,7 @@ export function AuthProvider({ children }) {
     try {
       const response = await authAPI.getCurrentUser();
       setUser(response.data);
-    } catch (error) {
+    } catch (error: any) {
       if (error.response?.status === 401) {
         console.log('No valid session found');
       } else {
@@ -47,7 +71,7 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = (token, userData) => {
+  const login = (token: string, userData: any) => {
     localStorage.setItem('authToken', token);
     setUser(userData);
     setInitialized(true);

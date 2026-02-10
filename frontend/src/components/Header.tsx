@@ -1,6 +1,7 @@
+'use client';
+
 import { useState } from 'react';
-import '../css/Header.css';
-import Sidebar from './Sidebar';
+import Sidebar from '@/components/SideBar';
 
 function Header() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

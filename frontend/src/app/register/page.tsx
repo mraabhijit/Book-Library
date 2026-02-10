@@ -1,7 +1,9 @@
+'use client';
+
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../css/Register.css';
-import { authAPI } from '../services/api';
+import Link from 'next/link';
+import { authAPI } from '@/lib/api';
+import { useRouter } from 'next/navigation';
 
 function Register() {
   const [username, setUsername] = useState('');
@@ -9,11 +11,11 @@ function Register() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault();
 
     if (password !== confirmPassword) {
@@ -34,8 +36,8 @@ function Register() {
       });
 
       console.log('Registration successful: ', response.data);
-      navigate('/login');
-    } catch (err) {
+      router.push('/login');
+    } catch (err: any) {
       console.error('Registration error: ', err);
 
       if (err.response?.status === 400) {
@@ -103,7 +105,7 @@ function Register() {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
               required
-              minLength="8"
+              minLength={8}
               className="form-input"
             />
           </div>
@@ -117,7 +119,7 @@ function Register() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="Confirm your password"
               required
-              minLength="8"
+              minLength={8}
               className="form-input"
             />
           </div>
@@ -131,7 +133,7 @@ function Register() {
 
         <p className="redirect-text">
           Already have an account?{' '}
-          <Link to="/login" className="redirect-link">
+          <Link href="/login" className="redirect-link">
             Login
           </Link>
         </p>

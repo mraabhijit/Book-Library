@@ -1,18 +1,20 @@
+'use client';
+
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../css/Login.css';
-import { authAPI } from '../services/api';
-import { useAuth } from '../context/AuthContext';
+import Link from 'next/link';
+import { authAPI } from '@/lib/api';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 function Login() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
+  const router = useRouter();
   const { login } = useAuth();
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: any) => {
     e.preventDefault(); // Prevent page reload
 
     setLoading(true);
@@ -32,8 +34,8 @@ function Login() {
       login(response.data.access_token, userResponse.data);
 
       // Redirect to home page
-      navigate('/admin');
-    } catch (err) {
+      router.push('/admin');
+    } catch (err: any) {
       console.error('Login error: ', err);
 
       if (err.response?.status === 401) {
@@ -89,7 +91,7 @@ function Login() {
 
         <p className="redirect-text">
           Don't have an account?{' '}
-          <Link to="/register" className="redirect-link">
+          <Link href="/register" className="redirect-link">
             Register
           </Link>
         </p>

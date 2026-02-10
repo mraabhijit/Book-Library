@@ -1,11 +1,19 @@
-import { useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import '../css/Sidebar.css';
-import { useAuth } from '../context/AuthContext';
+'use client';
 
-function Sidebar({ isOpen, onClose }) {
+import { useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
+function Sidebar({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
   const { isAuthenticated, logout, user, checkAuth } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
 
   useEffect(() => {
     if (isOpen) {
@@ -16,7 +24,7 @@ function Sidebar({ isOpen, onClose }) {
   const handleLogout = () => {
     logout();
     onClose();
-    navigate('/');
+    router.push('/');
   };
 
   return (
@@ -42,10 +50,10 @@ function Sidebar({ isOpen, onClose }) {
         <nav className="sidebar-nav">
           {isAuthenticated ? (
             <>
-              <Link to="/" className="sidebar-link" onClick={onClose}>
+              <Link href="/" className="sidebar-link" onClick={onClose}>
                 Home
               </Link>
-              <Link to="/admin" className="sidebar-link" onClick={onClose}>
+              <Link href="/admin" className="sidebar-link" onClick={onClose}>
                 Admin
               </Link>
               <button
@@ -57,13 +65,13 @@ function Sidebar({ isOpen, onClose }) {
             </>
           ) : (
             <>
-              <Link to="/" className="sidebar-link" onClick={onClose}>
+              <Link href="/" className="sidebar-link" onClick={onClose}>
                 Home
               </Link>
-              <Link to="/login" className="sidebar-link" onClick={onClose}>
+              <Link href="/login" className="sidebar-link" onClick={onClose}>
                 Login
               </Link>
-              <Link to="/register" className="sidebar-link" onClick={onClose}>
+              <Link href="/register" className="sidebar-link" onClick={onClose}>
                 Register
               </Link>
             </>

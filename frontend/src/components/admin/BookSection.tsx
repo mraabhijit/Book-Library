@@ -1,17 +1,18 @@
-import '../../css/Admin.css';
-import { useState, useEffect } from 'react';
-import { booksAPI } from '../../services/api';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { booksAPI } from '@/lib/api';
 
 function BookSection() {
-  const [activeAction, setActiveAction] = useState(null);
+  const [activeAction, setActiveAction] = useState<string | null>(null);
 
   // Data state
-  const [books, setBooks] = useState([]);
+  const [books, setBooks] = useState<any[]>([]);
 
   // UI States
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   // Form data - Books
   const [bookId, setBookId] = useState('');
@@ -41,7 +42,7 @@ function BookSection() {
       const response = await booksAPI.getBooks();
       setBooks(response.data);
       setError(null);
-    } catch (err) {
+    } catch (err : any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -60,7 +61,7 @@ function BookSection() {
   };
 
   // Create book
-  const handleCreateBook = async (e) => {
+  const handleCreateBook = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
@@ -73,7 +74,7 @@ function BookSection() {
       setSuccess('Book created successfully!');
       resetForm();
       fetchBooks();
-    } catch (err) {
+    } catch (err : any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -81,11 +82,11 @@ function BookSection() {
   };
 
   // Update Book
-  const handleUpdateBook = async (e) => {
+  const handleUpdateBook = async (e : any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const updateData = {};
+      const updateData: any = {};
       if (title) updateData.title = title;
       if (author) updateData.author = author;
       if (description) updateData.description = description;
@@ -97,11 +98,11 @@ function BookSection() {
         return;
       }
 
-      await booksAPI.updateBook(bookId, updateData);
+      await booksAPI.updateBook(parseInt(bookId), updateData);
       setSuccess('Book updated successfully!');
       resetForm();
       fetchBooks();
-    } catch (err) {
+    } catch (err : any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -109,15 +110,15 @@ function BookSection() {
   };
 
   // Search Book By ID
-  const handleSearchBookById = async (e) => {
+  const handleSearchBookById = async (e: any) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await booksAPI.getBook(bookId);
+      const response = await booksAPI.getBook(parseInt(bookId));
       setBooks([response.data]);
       setSuccess('Book found!');
       setError(null);
-    } catch (err) {
+    } catch (err : any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
@@ -125,17 +126,17 @@ function BookSection() {
   };
 
   // Delete a book
-  const handleDeleteBook = async (e) => {
+  const handleDeleteBook = async (e: any) => {
     e.preventDefault();
     if (!window.confirm('Are you sure you want to delete this book?')) return;
 
     setLoading(true);
     try {
-      await booksAPI.deleteBook(bookId);
+      await booksAPI.deleteBook(parseInt(bookId));
       setSuccess('Book successfully deleted!');
       resetForm();
       fetchBooks();
-    } catch (err) {
+    } catch (err : any) {
       setError(err.response?.data?.detail || err.message);
     } finally {
       setLoading(false);
