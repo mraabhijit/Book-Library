@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+
 import '../css/BookTable.css';
 
 function BookTable({ books }) {
