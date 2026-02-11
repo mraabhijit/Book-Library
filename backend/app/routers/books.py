@@ -128,5 +128,15 @@ async def delete_book(
             detail="Cannot delete book that is currently borrowed or marked as unavailable.",
         )
 
+    result = await db.execute(
+        select(models.Borrowing).where(models.Borrowing.book_id == existing_book.id)
+    )
+    has_borrowing_history = result.scalars().first()
+    if has_borrowing_history:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete book with borrowing history.",
+        )
+
     await db.delete(existing_book)
     await db.commit()

@@ -12,4 +12,4 @@ RUN uv sync --locked
 
 COPY . .
 
-CMD ["uv", "run", "fastapi", "dev", "app/main.py"]
+CMD ["uv", "run", "fastapi", "run", "app/main.py", "--host", "0.0.0.0"]

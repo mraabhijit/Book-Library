@@ -2,32 +2,58 @@ services:
   # PostgreSQL database service
   postgres:
     image: postgres:15
-    
+
     # Environment variables for PostgreSQL initialization
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_DB: library
-    
+
     # Mount volumes for data persistence and configuration
     volumes:
       - pgdata:/var/lib/postgresql/data
 
     # Allows connections to localhost:5432 from your machine
     ports:
-      - "5433:5432"
-    
+      - '5433:5432'
+
     # Allows other services to communicate with postgres by service name
     networks:
       - library-network
-    
+
     # Health check to verify PostgreSQL is ready to accept connections
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 10s
       timeout: 5s
       retries: 5
 
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - backend/.env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - '8000:8000'
+    networks:
+      - library-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    env_file:
+      - frontend/.env.docker
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+    networks:
+      - library-network
 
 # Define named volumes for persistent data storage
 volumes:
@@ -36,6 +62,6 @@ volumes:
 # Define custom networks for service communication
 networks:
   library-network:
-    # To allow containers to communicate with each other 
+    # To allow containers to communicate with each other
     # within the network and isolate from other containers
     driver: bridge
