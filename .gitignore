@@ -15,6 +15,7 @@ env/
 .env
 .env.local
 .env.*.local
+.env.docker
 
 # Keep the template files
 !.env.development
