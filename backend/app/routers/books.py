@@ -1,16 +1,13 @@
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
-from fastapi.routing import APIRouter
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app import models
 from app.database import get_db
-from app.schemas import BookCreate, BookResponse, BookUpdate
 from app.routers.auth import CurrentUser
-
+from app.schemas import BookCreate, BookResponse, BookUpdate
+from fastapi import Depends, HTTPException, status
+from fastapi.routing import APIRouter
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -123,6 +120,12 @@ async def delete_book(
     if not existing_book:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
+        )
+
+    if not existing_book.is_available:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete book that is currently borrowed or marked as unavailable.",
         )
 
     await db.delete(existing_book)

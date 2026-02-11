@@ -1,15 +1,13 @@
 from typing import Annotated
 
-from fastapi.routing import APIRouter
-from fastapi import Depends, HTTPException, status
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app import models
 from app.database import get_db
-from app.schemas import MemberCreate, MemberResponse, MemberUpdate
 from app.routers.auth import CurrentUser
-
+from app.schemas import MemberCreate, MemberResponse, MemberUpdate
+from fastapi import Depends, HTTPException, status
+from fastapi.routing import APIRouter
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter()
 
@@ -158,5 +156,18 @@ async def delete_member(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Member not found."
         )
+
+    result = await db.execute(
+        select(models.Borrowing.member_id).where(
+            models.Borrowing.member_id == member.id,
+        )
+    )
+    borrowings = result.scalars().first()
+    if borrowings:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Cannot delete member with borrowing history.",
+        )
+
     await db.delete(member)
     await db.commit()
