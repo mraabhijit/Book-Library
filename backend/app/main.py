@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.database import Base, engine
+from app.database import engine
 from app.routers import auth, books, borrowings, members
 
 
@@ -12,9 +12,8 @@ async def lifespan(_app: FastAPI):
     """
     Lifespan context manager for FastAPI application.
     Handles startup and shutdown events.
+    Database schema is managed via Alembic migrations.
     """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
     yield
     await engine.dispose()
 

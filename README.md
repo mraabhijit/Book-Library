@@ -5,6 +5,7 @@ A full-stack web application for managing a neighborhood library's books, member
 ## Technology Stack
 
 ### Backend
+
 - Python 3.11+
 - FastAPI (REST API framework)
 - SQLAlchemy 2.0 (ORM with async support)
@@ -13,18 +14,21 @@ A full-stack web application for managing a neighborhood library's books, member
 - Pydantic v2 (data validation)
 
 ### Frontend
+
 - Next.js 16 (React framework)
 - TypeScript
 - Tailwind CSS
 - Axios (HTTP client)
 
 ### Infrastructure
+
 - Docker & Docker Compose
 - PostgreSQL (containerized)
 
 ## Features
 
 ### Core Functionality
+
 - Create, read, update, and delete books
 - Create, read, update, and delete members
 - Borrow books (with due date tracking)
@@ -33,6 +37,7 @@ A full-stack web application for managing a neighborhood library's books, member
 - Query books borrowed by specific members
 
 ### Additional Features
+
 - Staff authentication and authorization
 - Automatic due date calculation (14 days from borrow date)
 - Validation to prevent deleting books that are borrowed or have borrowing history
@@ -45,6 +50,7 @@ A full-stack web application for managing a neighborhood library's books, member
 - Git
 
 For local development without Docker:
+
 - Python 3.11+
 - **uv** (recommended) or **Miniconda** for Python dependency management
 - Node.js 20+
@@ -61,7 +67,7 @@ cd LibraryApp
 
 ### 2. Set Up Environment Variables
 
-Backend environment file already exists at `backend/.env.docker`. Update if needed:
+Create a `backend/.env.docker` file with the following content:
 
 ```bash
 # backend/.env.docker
@@ -69,7 +75,12 @@ SECRET_KEY=your-secret-key-here
 DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/library
 ```
 
-Frontend environment file already exists at `frontend/.env.docker`. Update if needed:
+If needed, create a secret key with the following in the terminal and set it to the `SECRET_KEY`
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
+```
+
+Create a `frontend/.env.docker` file with the following content:
 
 ```bash
 # frontend/.env.docker
@@ -83,6 +94,7 @@ docker-compose up -d --build
 ```
 
 This will start:
+
 - PostgreSQL database on port 5432
 - Backend API on port 8000
 - Frontend application on port 3000
@@ -102,6 +114,7 @@ docker-compose exec backend uv run python seed_data.py
 ```
 
 This will create:
+
 - 2 staff users (admin/admin123, staff1/staff123)
 - 10 books (8 available, 2 currently borrowed)
 - 5 members
@@ -115,7 +128,8 @@ This will create:
 - API Documentation (ReDoc): http://localhost:8000/redoc
 
 Login credentials (if you ran seed script):
-- Username: `admin`
+
+- Username: `admin@library.com`
 - Password: `admin123`
 
 You can use the Swagger UI at http://localhost:8000/docs to test all API endpoints interactively.
@@ -188,7 +202,25 @@ uv run alembic upgrade head
 alembic upgrade head
 ```
 
-6. Start the backend server:
+6. (Optional) Seed sample data:
+
+To populate the database with sample data for testing:
+
+```bash
+# If using uv:
+uv run python seed_data.py
+
+# If using conda:
+python seed_data.py
+```
+
+This will create:
+- 2 staff users (admin/admin123, staff1/staff123)
+- 10 books (8 available, 2 currently borrowed)
+- 5 members
+- 5 borrowing records (2 active, 3 returned)
+
+7. Start the backend server:
 
 ```bash
 # If using uv:
@@ -199,6 +231,11 @@ fastapi dev app/main.py
 ```
 
 Backend will be available at http://localhost:8000
+
+Login credentials (if you ran seed script):
+
+- Username: `admin@library.com`
+- Password: `admin123`
 
 ### Frontend Setup
 
@@ -236,6 +273,7 @@ Frontend will be available at http://localhost:3000
 All endpoints except /api/auth/login and /api/books require authentication. Use the `/api/auth/login` endpoint to obtain a JWT token.
 
 **Login:**
+
 ```bash
 POST /api/auth/login
 Content-Type: application/x-www-form-urlencoded
@@ -244,6 +282,7 @@ username=admin&password=admin123
 ```
 
 Response:
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -252,6 +291,7 @@ Response:
 ```
 
 Use the token in subsequent requests:
+
 ```bash
 Authorization: Bearer <access_token>
 ```
@@ -287,6 +327,7 @@ For detailed API documentation with request/response schemas, visit http://local
 ### Tables
 
 **books**
+
 - id (Primary Key)
 - title
 - author
@@ -297,6 +338,7 @@ For detailed API documentation with request/response schemas, visit http://local
 - updated_at
 
 **members**
+
 - id (Primary Key)
 - name
 - email (Unique)
@@ -305,6 +347,7 @@ For detailed API documentation with request/response schemas, visit http://local
 - updated_at
 
 **borrowing_records**
+
 - id (Primary Key)
 - book_id (Foreign Key to books)
 - member_id (Foreign Key to members)
@@ -314,6 +357,7 @@ For detailed API documentation with request/response schemas, visit http://local
 - updated_at
 
 **staffs**
+
 - id (Primary Key)
 - username (Unique)
 - email (Unique)
@@ -321,27 +365,45 @@ For detailed API documentation with request/response schemas, visit http://local
 - full_name
 - created_at
 
-## Running Tests
+## Testing
 
-### Backend Tests
+This application uses **manual testing** via interactive API documentation and tools.
 
-```bash
-cd backend
-uv run pytest
-```
+### API Testing with Swagger UI
 
-Run with coverage:
+The easiest way to test all API endpoints is through the built-in Swagger UI:
 
-```bash
-uv run pytest --cov=app --cov-report=html
-```
+1. Start the backend server (locally or via Docker)
+2. Navigate to http://localhost:8000/docs
+3. Use the seed data to populate the database with test data:
+   ```bash
+   # Docker:
+   docker-compose exec backend uv run python seed_data.py
+   
+   # Local:
+   python seed_data.py
+   ```
+4. Click "Authorize" in Swagger UI and login with:
+   - Username: `admin@library.com`
+   - Password: `admin123`
+5. Test all endpoints interactively with the pre-populated sample data
 
-### Frontend Tests
+### Alternative: Testing with Postman
 
-```bash
-cd frontend
-npm test
-```
+You can also import the API endpoints into Postman:
+
+1. Use the OpenAPI schema from http://localhost:8000/openapi.json
+2. Import into Postman
+3. Set up authentication with the credentials above
+4. Test all endpoints with the sample data from seed_data.py
+
+### Sample Test Data
+
+After running `seed_data.py`, you'll have:
+- 2 staff users (admin@library.com, staff1@library.com)
+- 10 books (IDs 1-10, with IDs 5 and 8 currently borrowed)
+- 5 members (IDs 1-5)
+- 5 borrowing records (2 active, 3 returned)
 
 ## Project Structure
 
@@ -357,8 +419,9 @@ LibraryApp/
 │   │   ├── utils.py          # Utility functions
 │   │   └── main.py           # FastAPI application
 │   ├── alembic/              # Database migrations
-│   ├── tests/                # Test files
 │   ├── Dockerfile
+│   ├── seed_data.py          # Seed Data
+│   ├── requirements.txt
 │   └── pyproject.toml
 ├── frontend/
 │   ├── src/
@@ -379,11 +442,13 @@ LibraryApp/
 If the backend cannot connect to PostgreSQL:
 
 1. Ensure PostgreSQL is running:
+
 ```bash
 docker-compose ps
 ```
 
 2. Check PostgreSQL logs:
+
 ```bash
 docker-compose logs postgres
 ```
@@ -401,7 +466,6 @@ If ports 3000, 5432, or 8000 are already in use:
 
 1. Verify backend is running on port 8000
 2. Check NEXT_PUBLIC_API_URL in frontend/.env.docker
-3. Ensure CORS is properly configured in backend/app/main.py
 
 ## Environment Variables Reference
 
@@ -419,26 +483,31 @@ If ports 3000, 5432, or 8000 are already in use:
 ## Docker Commands Reference
 
 ### Rebuild and restart a single service:
+
 ```bash
 docker-compose up -d --build <service-name>
 ```
 
 ### View logs for a service:
+
 ```bash
 docker-compose logs -f <service-name>
 ```
 
 ### Execute command in a running container:
+
 ```bash
 docker-compose exec <service-name> <command>
 ```
 
 ### Stop all services:
+
 ```bash
 docker-compose down
 ```
 
 ### Remove all data including volumes:
+
 ```bash
 docker-compose down -v
 ```
@@ -446,4 +515,3 @@ docker-compose down -v
 ## License
 
 This project is created as a take-home assessment for a Neighborhood Library Management System.
-

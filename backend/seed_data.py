@@ -12,9 +12,9 @@ from datetime import datetime, timedelta, UTC
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import async_session_maker, engine, Base
+from app.database import AsyncSessionLocal, engine, Base
 from app.models import Book, Member, Borrowing, Staff
-from app.utils import get_password_hash
+from app.utils import hash_password
 
 
 async def clear_database():
@@ -34,13 +34,13 @@ async def seed_staff(session: AsyncSession):
         Staff(
             username="admin",
             email="admin@library.com",
-            hashed_password=get_password_hash("admin123"),
+            hashed_password=hash_password("admin123"),
             full_name="Library Administrator",
         ),
         Staff(
             username="staff1",
             email="staff1@library.com",
-            hashed_password=get_password_hash("staff123"),
+            hashed_password=hash_password("staff123"),
             full_name="John Librarian",
         ),
     ]
@@ -232,7 +232,7 @@ async def main():
     await clear_database()
 
     # Create a session
-    async with async_session_maker() as session:
+    async with AsyncSessionLocal() as session:
         # Seed data in order
         await seed_staff(session)
         books = await seed_books(session)

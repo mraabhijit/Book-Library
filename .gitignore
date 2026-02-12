@@ -45,6 +45,7 @@ pgdata/
 
 # Test files
 test_connection.py
+backend/tests/
 
 # Distribution / packaging
 dist/

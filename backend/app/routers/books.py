@@ -93,6 +93,19 @@ async def update_book(
             status_code=status.HTTP_404_NOT_FOUND, detail="Book not found"
         )
 
+    result = await db.execute(
+        select(models.Borrowing).where(
+            models.Borrowing.book_id == book_id,
+            models.Borrowing.returned_date.is_(None),
+        )
+    )
+    is_borrowed = result.scalars().first()
+    if is_borrowed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update a borrowed book",
+        )
+
     updated_data = book.model_dump(exclude_unset=True)
     for field, value in updated_data.items():
         setattr(existing_book, field, value)
