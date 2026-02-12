@@ -8,14 +8,16 @@
 - **Database:** PostgreSQL 15+
 - **Migrations:** Alembic
 - **Validation:** Pydantic v2
+- **Authentication:** JWT (JSON Web Tokens) with OAuth2 password flow
+- **Password Hashing:** pwdlib
 - **Environment:** Python 3.11+
 
 ### Frontend:
 - **Framework:** Next.js 14 (App Router)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS
-- **HTTP Client:** Axios or Fetch API
-- **UI Components:** Shadcn/ui (optional, for professional look)
+- **HTTP Client:** Axios
+- **State Management:** React Context API (for authentication)
 
 ### Infrastructure:
 - **Containerization:** Docker + Docker Compose
@@ -34,12 +36,21 @@
 │ id (PK)         │◄────────┤ book_id (FK)         │         │ id (PK)         │
 │ title           │         │ member_id (FK)       ├────────►│ name            │
 │ author          │         │ borrowed_date        │         │ email (UNIQUE)  │
-│ isbn            │         │ due_date             │         │ phone           │
-│ description     │         │ returned_date        │         │ created_at      │
-│ is_available    │         │ status               │         │ updated_at      │
-│ created_at      │         │ created_at           │         └─────────────────┘
-│ updated_at      │         │ updated_at           │
-└─────────────────┘         └──────────────────────┘
+│ isbn (UNIQUE)   │         │ returned_date        │         │ phone (UNIQUE)  │
+│ description     │         │ created_at           │         │ created_at      │
+│ is_available    │         │ updated_at           │         │ updated_at      │
+│ created_at      │         │                      │         └─────────────────┘
+│ updated_at      │         │ *due_date (computed) │
+└─────────────────┘         │ *status (computed)   │         ┌─────────────────┐
+                            └──────────────────────┘         │     STAFFS      │
+                                                             ├─────────────────┤
+                                                             │ id (PK)         │
+                                                             │ username (UNQ)  │
+                                                             │ email (UNIQUE)  │
+                                                             │ hashed_password │
+                                                             │ full_name       │
+                                                             │ created_at      │
+                                                             └─────────────────┘
 ```
 
 ### Table Definitions:
@@ -79,26 +90,43 @@ CREATE TABLE borrowing_records (
     id SERIAL PRIMARY KEY,
     book_id INTEGER NOT NULL REFERENCES books(id) ON DELETE RESTRICT,
     member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE RESTRICT,
-    borrowed_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    due_date TIMESTAMP,
+    borrowed_date TIMESTAMP,
     returned_date TIMESTAMP,
-    status VARCHAR(20) DEFAULT 'borrowed', -- 'borrowed', 'returned', 'overdue'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_borrowing_book_id ON borrowing_records(book_id);
 CREATE INDEX idx_borrowing_member_id ON borrowing_records(member_id);
-CREATE INDEX idx_borrowing_status ON borrowing_records(status);
+```
+
+**Note:** `due_date` and `status` are computed properties in the application layer:
+- `due_date` = `borrowed_date + 14 days`
+- `status` = `"BORROWED"` if `returned_date` is NULL, else `"RETURNED"`
+
+#### 4. staffs
+
+```sql
+CREATE TABLE staffs (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(200) UNIQUE NOT NULL,
+    hashed_password VARCHAR(100) NOT NULL,
+    full_name VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 ```
 
 ### Key Design Decisions:
 
 - ✅ **Keep borrowing history** - Don't delete records when returned (set `returned_date`)
 - ✅ **`is_available` flag on books** - Quick lookup without JOIN
-- ✅ **Email as unique identifier** - Natural key for members
-- ✅ **Indexes** - Optimize common queries (by member, by book, by status)
+- ✅ **Email as unique identifier** - Natural key for members and staff
+- ✅ **Indexes** - Optimize common queries (by member, by book)
 - ✅ **ON DELETE RESTRICT** - Prevent accidental data loss
+- ✅ **Computed properties** - `due_date` and `status` calculated in application layer for flexibility
+- ✅ **JWT Authentication** - Stateless authentication for staff members
+- ✅ **Password hashing** - pwdlib for secure password storage
 
 ---
 
@@ -111,31 +139,28 @@ backend/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI app entry point
-│   ├── config.py               # Environment config (DB URL, etc.)
+│   ├── config.py               # Environment config (DB URL, JWT secret, etc.)
 │   ├── database.py             # Database connection & session
-│   │
-│   ├── models.py               # SQLAlchemy ORM models
-│   │
+│   ├── models.py               # SQLAlchemy ORM models (Book, Member, Borrowing, Staff)
 │   ├── schemas.py              # Pydantic schemas (request/response)
+│   ├── utils.py                # Utility functions (JWT, password hashing)
 │   │
-│   ├── routers/                # API endpoints
-│   │   ├── __init__.py
-│   │   ├── books.py
-│   │   ├── members.py
-│   │   └── borrowing.py
-│   │
-│   │
-│   └── exceptions.py           # Custom exceptions
+│   └── routers/                # API endpoints
+│       ├── __init__.py
+│       ├── auth.py             # Authentication endpoints
+│       ├── books.py            # Books CRUD
+│       ├── members.py          # Members CRUD
+│       └── borrowings.py       # Borrowing operations
 │
 ├── alembic/                    # Database migrations
 │   ├── versions/
 │   └── env.py
 │
-├── tests/                      # Unit tests (optional for take-home)
-│   └── __init__.py
-│
+├── seed_data.py                # Database seeding script
+├── test_connection.py          # Database connection test
 ├── uv.lock
 ├── pyproject.toml
+├── requirements.txt
 ├── .env.example
 ├── Dockerfile
 └── README.md
@@ -143,59 +168,84 @@ backend/
 
 ### Layer Responsibilities:
 
-- **`database.py`** - Database connections (Sessions, Base metadata)
-- **`main.py`** - App initialization, CORS, middleware
-- **`models.py`** - SQLAlchemy ORM models (database tables)
-- **`schemas.py`** - Pydantic models (API validation)
-- **`routers/`** - API endpoints (HTTP handlers)
-- **`exceptions.py`** - Custom exceptions (BookNotAvailable, MemberNotFound, etc.)
+- **`config.py`** - Environment configuration using Pydantic Settings
+- **`database.py`** - Async database engine and session management
+- **`main.py`** - FastAPI app initialization, CORS, router registration, lifespan events
+- **`models.py`** - SQLAlchemy ORM models with relationships and computed properties
+- **`schemas.py`** - Pydantic models for request/response validation
+- **`utils.py`** - JWT token creation/verification, password hashing/verification, OAuth2 scheme
+- **`routers/`** - API endpoints organized by resource (auth, books, members, borrowings)
+- **`routers/auth.py`** - Authentication endpoints (register, login, get current user)
+- **Error Handling** - Using FastAPI's HTTPException for all error responses
 
 ---
 
 ## API Design (REST)
 
-**Base URL:** `http://localhost:8000/api/v1`
+**Base URL:** `http://localhost:8000/api`
+
+### Authentication Endpoints:
+
+| Method | Endpoint | Description | Request Body | Response | Auth Required |
+|--------|----------|-------------|--------------|----------|---------------|
+| POST | `/auth/register` | Register new staff | `StaffCreate` | `StaffResponse` | No |
+| POST | `/auth/login` | Login staff (OAuth2) | `OAuth2PasswordRequestForm` | `Token` | No |
+| GET | `/auth/me` | Get current user | - | `StaffResponse` | Yes |
 
 ### Books Endpoints:
 
-| Method | Endpoint | Description | Request Body | Response |
-|--------|----------|-------------|--------------|----------|
-| GET | `/books` | List all books | - | `BookResponse[]` |
-| GET | `/books/{id}` | Get book by ID | - | `BookResponse` |
-| POST | `/books` | Create new book | `BookCreate` | `BookResponse` |
-| PUT | `/books/{id}` | Update book | `BookUpdate` | `BookResponse` |
-| DELETE | `/books/{id}` | Delete book | - | `204 No Content` |
+| Method | Endpoint | Description | Request Body | Response | Auth Required |
+|--------|----------|-------------|--------------|----------|---------------|
+| GET | `/books/` | List all books | - | `BookResponse[]` | No |
+| GET | `/books/{id}` | Get book by ID | - | `BookResponse` | Yes |
+| POST | `/books/` | Create new book | `BookCreate` | `BookResponse` | Yes |
+| PUT | `/books/{id}` | Update book | `BookUpdate` | `BookResponse` | Yes |
+| DELETE | `/books/{id}` | Delete book | - | `204 No Content` | Yes |
 
 ### Members Endpoints:
 
-| Method | Endpoint | Description | Request Body | Response |
-|--------|----------|-------------|--------------|----------|
-| GET | `/members` | List all members | - | `MemberResponse[]` |
-| GET | `/members/{id}` | Get member by ID | - | `MemberResponse` |
-| POST | `/members` | Create new member | `MemberCreate` | `MemberResponse` |
-| PUT | `/members/{id}` | Update member | `MemberUpdate` | `MemberResponse` |
-| DELETE | `/members/{id}` | Delete member | - | `204 No Content` |
+| Method | Endpoint | Description | Request Body | Response | Auth Required |
+|--------|----------|-------------|--------------|----------|---------------|
+| GET | `/members/` | List all members | - | `MemberResponse[]` | Yes |
+| GET | `/members/{id}` | Get member by ID | - | `MemberResponse` | Yes |
+| POST | `/members/` | Create new member | `MemberCreate` | `MemberResponse` | Yes |
+| PUT | `/members/{id}` | Update member | `MemberUpdate` | `MemberResponse` | Yes |
+| DELETE | `/members/{id}` | Delete member | - | `204 No Content` | Yes |
 
 ### Borrowing Endpoints:
 
-| Method | Endpoint | Description | Request Body | Response |
-|--------|----------|-------------|--------------|----------|
-| POST | `/borrowings/borrow` | Borrow a book | `BorrowRequest` | `BorrowResponse` |
-| PUT | `/borrowings/return` | Return a book | `ReturnRequest` | `ReturnResponse` |
-| GET | `/borrowings` | List all currently borrowed books | - | `BorrowResponse[]` |
-| GET | `/borrowings/members/{id}` | Get member's borrowed books | - | `BorrowResponse[]` |
-| GET | `/borrowings/history` | Get all borrowing history | - | `BorrowResponse[]` |
+| Method | Endpoint | Description | Request Body | Response | Auth Required |
+|--------|----------|-------------|--------------|----------|---------------|
+| GET | `/borrowings/` | List currently borrowed books | - | `BorrowResponse[]` | Yes |
+| GET | `/borrowings/history` | Get all borrowing history | - | `BorrowResponse[]` | Yes |
+| GET | `/borrowings/members/{id}` | Get member's borrowing records | - | `BorrowResponse[]` | Yes |
+| POST | `/borrowings/borrow` | Borrow a book | `BorrowRequest` | `BorrowResponse` | Yes |
+| PUT | `/borrowings/return` | Return a book | `ReturnRequest` | `ReturnResponse` | Yes |
 
 ### Sample Request/Response:
 
-**POST /api/v1/borrow**
+**POST /api/auth/login**
 
 ```json
-// Request
+// Request (form-data)
+username: staff@library.com
+password: securepassword123
+
+// Response (200 OK)
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+**POST /api/borrowings/borrow**
+
+```json
+// Request (requires Bearer token)
 {
   "book_id": 1,
   "member_id": 5,
-  "due_date": "2026-02-19T00:00:00Z"  // Optional, 14 days default
+  "due_date": null  // Optional, computed as borrowed_date + 14 days
 }
 
 // Response (200 OK)
@@ -203,23 +253,33 @@ backend/
   "id": 10,
   "book_id": 1,
   "member_id": 5,
-  "borrowed_date": "2026-02-05T14:00:00Z",
-  "due_date": "2026-02-19T00:00:00Z",
+  "borrowed_date": "2026-02-12T06:45:00Z",
+  "due_date": "2026-02-26T06:45:00Z",  // Computed property
   "returned_date": null,
-  "status": "borrowed",
+  "status": "BORROWED",  // Computed property
   "book": {
+    "id": 1,
     "title": "The Great Gatsby",
-    "author": "F. Scott Fitzgerald"
+    "author": "F. Scott Fitzgerald",
+    "isbn": "9780743273565",
+    "is_available": false
   },
   "member": {
+    "id": 5,
     "name": "John Doe",
-    "email": "john@example.com"
+    "email": "john@example.com",
+    "phone": "1234567890"
   }
 }
 
 // Error Response (400 Bad Request)
 {
-  "detail": "Book is not available for borrowing"
+  "detail": "Book not available."
+}
+
+// Error Response (401 Unauthorized)
+{
+  "detail": "Not authenticated"
 }
 ```
 
@@ -227,62 +287,118 @@ backend/
 
 ## Business Logic & Validation
 
+### Authentication Flow:
+
+```python
+# Staff Registration
+async def create_staff(staff: StaffCreate, db: AsyncSession):
+    # 1. Check if username already exists (case-insensitive)
+    # 2. Check if email already exists (case-insensitive)
+    # 3. Hash password using pwdlib
+    # 4. Create staff record
+    # 5. Return staff (without password)
+
+# Staff Login
+async def login(credentials: OAuth2PasswordRequestForm, db: AsyncSession):
+    # 1. Find staff by email (username field contains email)
+    # 2. Verify password using pwdlib
+    # 3. Create JWT access token with staff.id as subject
+    # 4. Return token (expires in configured minutes)
+
+# Protected Endpoints
+async def get_current_user(token: str, db: AsyncSession):
+    # 1. Verify JWT token
+    # 2. Extract staff_id from token subject
+    # 3. Fetch staff from database
+    # 4. Return staff or raise 401 Unauthorized
+```
+
 ### Borrow Operation:
 
 ```python
-# Pseudo-code for borrow logic
-def borrow_book(book_id, member_id, due_date):
+# Actual implementation from routers/borrowings.py
+async def borrow_book(borrow_request: BorrowRequest, current_user: Staff, db: AsyncSession):
     # 1. Check if book exists
-    book = get_book_by_id(book_id)
+    book = await db.get(Book, borrow_request.book_id)
     if not book:
-        raise BookNotFound()
+        raise HTTPException(status_code=404, detail="Book not found.")
     
     # 2. Check if book is available
     if not book.is_available:
-        raise BookNotAvailable()
+        raise HTTPException(status_code=400, detail="Book not available.")
     
     # 3. Check if member exists
-    member = get_member_by_id(member_id)
+    member = await db.get(Member, borrow_request.member_id)
     if not member:
-        raise MemberNotFound()
+        raise HTTPException(status_code=404, detail="Member not found.")
     
     # 4. Create borrowing record
-    record = create_borrowing_record(
-        book_id=book_id,
-        member_id=member_id,
-        due_date=due_date or (now() + 14 days)
+    record = Borrowing(
+        book_id=borrow_request.book_id,
+        member_id=borrow_request.member_id,
+        borrowed_date=datetime.now(UTC)
     )
+    db.add(record)
     
     # 5. Mark book as unavailable
-    update_book(book_id, is_available=False)
+    book.is_available = False
     
-    return record
+    # 6. Commit and return with relationships loaded
+    await db.commit()
+    await db.refresh(record, attribute_names=["book", "member"])
+    return record  # due_date and status computed automatically
 ```
 
 ### Return Operation:
 
 ```python
-def return_book(borrowing_record_id):
-    # 1. Get borrowing record
-    record = get_borrowing_record(borrowing_record_id)
-    if not record:
-        raise RecordNotFound()
-    
-    # 2. Check if already returned
-    if record.returned_date:
-        raise AlreadyReturned()
-    
-    # 3. Update record
-    update_borrowing_record(
-        id=borrowing_record_id,
-        returned_date=now(),
-        status='returned'
+# Actual implementation from routers/borrowings.py
+async def return_book(return_request: ReturnRequest, current_user: Staff, db: AsyncSession):
+    # 1. Find active borrowing record for book and member
+    record = await db.execute(
+        select(Borrowing)
+        .options(selectinload(Borrowing.book), selectinload(Borrowing.member))
+        .where(
+            Borrowing.book_id == return_request.book_id,
+            Borrowing.member_id == return_request.member_id,
+            Borrowing.returned_date.is_(None)  # Only unreturned books
+        )
     )
+    record = record.scalars().first()
     
-    # 4. Mark book as available
-    update_book(record.book_id, is_available=True)
+    if not record:
+        raise HTTPException(
+            status_code=404,
+            detail="No borrowing record found for provided book_id and member_id."
+        )
     
-    return record
+    # 2. Update record with return date
+    record.returned_date = datetime.now(UTC)
+    
+    # 3. Mark book as available
+    record.book.is_available = True
+    
+    # 4. Commit and return
+    await db.commit()
+    await db.refresh(record, attribute_names=["book", "member"])
+    return record  # status automatically becomes "RETURNED"
+```
+
+### Computed Properties:
+
+```python
+# In models.py - Borrowing model
+@property
+def due_date(self) -> datetime | None:
+    """Calculate due date as 14 days after borrowed date"""
+    if self.borrowed_date:
+        return self.borrowed_date + timedelta(days=14)
+    return None
+
+@property
+def status(self) -> str:
+    """Determine status based on returned_date"""
+    return "RETURNED" if self.returned_date else "BORROWED"
 ```
 
 ---
@@ -293,71 +409,68 @@ def return_book(borrowing_record_id):
 
 ```
 frontend/
-├── app/
-│   ├── layout.tsx              # Root layout
-│   ├── page.tsx                # Home/Dashboard
-│   ├── books/
-│   │   ├── page.tsx            # Books list
-│   │   └── [id]/
-│   │       └── page.tsx        # Book details/edit
-│   ├── members/
-│   │   ├── page.tsx            # Members list
-│   │   └── [id]/
-│   │       └── page.tsx        # Member details/edit
-│   └── borrowing/
-│       └── page.tsx            # Borrowing dashboard
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx          # Root layout with metadata
+│   │   ├── page.tsx            # Home page (redirects to login/admin)
+│   │   ├── globals.css         # Global styles and Tailwind imports
+│   │   │
+│   │   ├── login/
+│   │   │   └── page.tsx        # Login page
+│   │   │
+│   │   ├── register/
+│   │   │   └── page.tsx        # Staff registration page
+│   │   │
+│   │   └── admin/
+│   │       └── page.tsx        # Admin dashboard (all-in-one)
+│   │
+│   ├── components/
+│   │   ├── Header.tsx          # Navigation header
+│   │   ├── SideBar.tsx         # Sidebar navigation
+│   │   ├── SearchBar.tsx       # Search functionality
+│   │   ├── BookTable.tsx       # Reusable book table
+│   │   │
+│   │   └── admin/              # Admin-specific components
+│   │       ├── BookSection.tsx      # Books management section
+│   │       ├── MemberSection.tsx    # Members management section
+│   │       └── BorrowingSection.tsx # Borrowings management section
+│   │
+│   ├── context/
+│   │   └── AuthContext.tsx     # Authentication context provider
+│   │
+│   └── lib/
+│       ├── api.ts              # Axios API client with interceptors
+│       └── types.ts            # TypeScript interfaces
 │
-├── components/
-│   ├── BookForm.tsx
-│   ├── MemberForm.tsx
-│   ├── BorrowForm.tsx
-│   ├── BookTable.tsx
-│   ├── MemberTable.tsx
-│   └── BorrowedBooksTable.tsx
-│
-├── lib/
-│   ├── api.ts                  # API client functions
-│   └── types.ts                # TypeScript types
+├── public/
+│   └── (static assets)
 │
 ├── package.json
-└── tailwind.config.ts
+├── tsconfig.json
+├── next.config.ts
+├── tailwind.config.ts
+├── postcss.config.mjs
+├── .env.example
+└── Dockerfile
 ```
 
 ### Key Pages:
 
-- **Dashboard (`/`)** - Overview with stats
-- **Books (`/books`)** - List, add, edit, delete books
-- **Members (`/members`)** - List, add, edit, delete members
-- **Borrowing (`/borrowing`)** - Borrow/return interface, view borrowed books
+- **Home (`/`)** - Landing page that redirects based on auth status
+- **Login (`/login`)** - Staff authentication with JWT
+- **Register (`/register`)** - New staff registration
+- **Admin Dashboard (`/admin`)** - Unified dashboard with three sections:
+  - **Books Section** - List, add, edit, delete books with search
+  - **Members Section** - List, add, edit, delete members with search
+  - **Borrowings Section** - Borrow/return books, view history
+
+### Authentication Flow:
+
+1. User logs in via `/login` with email and password
+2. Backend returns JWT access token
+3. Frontend stores token in localStorage
+4. Axios interceptor adds `Authorization: Bearer <token>` to all requests
+5. Protected routes check for token and redirect to login if missing
+6. Token is verified on backend for all protected endpoints
 
 ---
-
-## Development Workflow
-
-### Phase 1: Backend Foundation (Days 1-2)
-1. Set up Docker Compose (PostgreSQL) - Done
-2. Initialize FastAPI project - Done
-3. Create SQLAlchemy models - Done
-4. Set up Alembic migrations
-5. Create database schema
-
-### Phase 2: Backend APIs (Days 3-5)
-1. Implement Books CRUD
-2. Implement Members CRUD
-3. Implement Borrowing logic
-4. Add validation & error handling
-5. Test with Swagger UI
-
-### Phase 3: Frontend (Days 6-8)
-1. Set up Next.js project
-2. Create Books management page
-3. Create Members management page
-4. Create Borrowing dashboard
-5. Connect to backend API
-
-### Phase 4: Polish (Days 9-10)
-1. Integration testing
-2. Error handling on frontend
-3. README documentation
-4. Seed data script
-5. Final review
