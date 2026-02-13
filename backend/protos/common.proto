@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+package library;
+
+// Empty response for operations that don't return data (like DELETE)
+message Empty {}

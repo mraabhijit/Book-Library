@@ -1,0 +1,77 @@
+syntax = "proto3";
+
+package library;
+
+import "google/protobuf/timestamp.proto";
+import "protos/common.proto";
+
+
+// =============================================
+// MESSAGE DEFINITIONS (Data Structures)
+// =============================================
+
+
+// Member message - represents a member entity
+// Equivalent to MemberResponse schema
+message Member {
+    int32 id = 1;
+    optional string name = 2;
+    string email = 3;
+    optional string phone = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+}
+
+// Request to create a new Member
+message CreateMemberRequest {
+    optional string name = 1;
+    string email = 2;
+    optional string phone = 3;
+}
+
+// Request to update a member
+message UpdateMemberRequest {
+    int32 id = 1;
+    optional string name = 2;
+    optional string phone = 3;
+}
+
+// Request to delete a member
+message DeleteMemberRequest {
+    int32 id = 1;
+}
+
+// Request to get all members
+message GetMembersResponse {
+    repeated Member members = 1;
+}
+
+// Request to get member by id
+message GetMemberRequest {
+    int32 id = 1;
+}
+
+// Request to get all members
+message GetMembersRequest {}
+
+
+// ============================================
+// SERVICE DEFINITION (RPC Methods)
+// ============================================
+
+service MemberService {
+    // Get all members
+    rpc GetMembers(GetMembersRequest) returns (GetMembersResponse);
+
+    // Get member by id
+    rpc GetMember(GetMemberRequest) returns (Member);
+
+    // Create a new member
+    rpc CreateMember(CreateMemberRequest) returns (Member);
+
+    // Update a member
+    rpc UpdateMember(UpdateMemberRequest) returns (Member);
+
+    // Delete a member
+    rpc DeleteMember(DeleteMemberRequest) returns (Empty);
+}
