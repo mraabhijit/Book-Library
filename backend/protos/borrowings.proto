@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package library;
+
+import "google/protobuf/timestamp.proto";
+import "protos/books.proto";
+import "protos/members.proto";
+
+
+message BorrowRequest {
+    int32 book_id = 1;
+    int32 member_id = 2;
+    optional google.protobuf.Timestamp due_date = 3; 
+}
+
+message BorrowResponse {
+    int32 id = 1;
+    int32 book_id = 2;
+    int32 member_id = 3;
+    optional google.protobuf.Timestamp due_date = 4;
+    google.protobuf.Timestamp borrowed_date = 5;
+    string status = 6;
+    optional google.protobuf.Timestamp returned_date = 7;
+    Book book = 8;
+    Member member = 9;
+}
+
+message GetBorrowingsResponse {
+    repeated BorrowResponse borrowings = 1;
+}
+
+message ReturnRequest {
+    int32 book_id = 1;
+    int32 member_id = 2;
+}
+
+message ReturnResponse {
+    int32 id = 1;
+    int32 book_id = 2;
+    int32 member_id = 3;
+    string status = 4;
+    google.protobuf.Timestamp returned_date = 5;
+    Book book = 6;
+    Member member = 7;
+}
+
+message GetBorrowRequest {}
+
+message GetMemberBorrowingsRequest {
+    int32 id = 1;
+}
+
+service BorrowingService {
+    rpc GetBorrowingsHistory(GetBorrowRequest) returns (GetBorrowingsResponse);
+    rpc GetCurrentBorrowings(GetBorrowRequest) returns (GetBorrowingsResponse);
+    rpc GetMemberBorrowings(GetMemberBorrowingsRequest) returns (GetBorrowingsResponse);
+    rpc BorrowBook(BorrowRequest) returns (BorrowResponse);
+    rpc ReturnBook(ReturnRequest) returns (ReturnResponse);
+}

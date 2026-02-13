@@ -4,9 +4,17 @@ from concurrent import futures
 
 import grpc
 from grpc_reflection.v1alpha import reflection
-from protos import books_pb2, books_pb2_grpc, members_pb2, members_pb2_grpc
+from protos import (
+    books_pb2,
+    books_pb2_grpc,
+    borrowings_pb2,
+    borrowings_pb2_grpc,
+    members_pb2,
+    members_pb2_grpc,
+)
 
 from app.grpc_handlers.books_handler import BookServicer
+from app.grpc_handlers.borrowings_handler import BorrowingServicer
 from app.grpc_handlers.members_handler import MemberServicer
 
 logging.basicConfig(level=logging.INFO)
@@ -51,6 +59,10 @@ async def serve():
         MemberServicer(),
         server,
     )
+    borrowings_pb2_grpc.add_BorrowingServiceServicer_to_server(
+        BorrowingServicer(),
+        server,
+    )
     # ============================================
     # 3. ENABLE REFLECTION (Optional but useful)
     # ============================================
@@ -62,6 +74,7 @@ async def serve():
         # The full name of your BookService from the .proto file
         books_pb2.DESCRIPTOR.services_by_name["BookService"].full_name,
         members_pb2.DESCRIPTOR.services_by_name["MemberService"].full_name,
+        borrowings_pb2.DESCRIPTOR.services_by_name["BorrowingService"].full_name,
         # The reflection service itself (meta-service)
         reflection.SERVICE_NAME,
     )
