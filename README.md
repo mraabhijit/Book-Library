@@ -514,4 +514,4 @@ docker-compose down -v
 
 ## License
 
-This project is created as a take-home assessment for a Neighborhood Library Management System.
+Simple Neighborhood Library App to test performance between REST API and gRPC endpoints.

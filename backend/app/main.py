@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database import engine
 from app.routers import auth, books, borrowings, members
@@ -25,6 +26,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+Instrumentator().instrument(app).expose(app)
 
 # Configure CORS to allow frontend to communicate with backend
 app.add_middleware(

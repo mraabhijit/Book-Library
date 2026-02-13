@@ -4,6 +4,7 @@ from concurrent import futures
 
 import grpc
 from grpc_reflection.v1alpha import reflection
+from prometheus_client import start_http_server
 from protos import (
     auth_pb2,
     auth_pb2_grpc,
@@ -15,10 +16,14 @@ from protos import (
     members_pb2_grpc,
 )
 
-from app.grpc_handlers.auth_handler import AuthServicer
-from app.grpc_handlers.books_handler import BookServicer
-from app.grpc_handlers.borrowings_handler import BorrowingServicer
-from app.grpc_handlers.members_handler import MemberServicer
+from app.grpc_handlers import (
+    AsyncPromServerInterceptor,
+    AuthServicer,
+    BookServicer,
+    BorrowingServicer,
+    MemberServicer,
+)
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -37,6 +42,7 @@ async def serve():
         # ThreadPoolExecutor: Manages worker threads for handling requests
         # max_workers=10 means up to 10 requests can be processed simultaneously
         futures.ThreadPoolExecutor(max_workers=10),
+        interceptors=[AsyncPromServerInterceptor()],
         # Options: Configuration for the server
         options=[
             # Maximum message size: 10MB (default is 4MB)
@@ -102,7 +108,13 @@ async def serve():
     # For production, you'd use add_secure_port() with certificates
 
     # ============================================
-    # 5. START THE SERVER
+    # 5. START HTTP SERVER FOR PROMETHEUS
+    # ============================================
+    start_http_server(9000)
+    logger.info("   Prometheus metric available on port 9000")
+
+    # ============================================
+    # 6. START THE SERVER
     # ============================================
     # Actually start listening for connections
     await server.start()
@@ -116,7 +128,7 @@ async def serve():
         logger.info("   Server stopped!")
 
     # ============================================
-    # 6. KEEP THE SERVER RUNNING
+    # 7. KEEP THE SERVER RUNNING
     # ============================================
     # This blocks forever, keeping the server alive
     # until you press Ctrl+C or the process is killed
