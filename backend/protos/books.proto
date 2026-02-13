@@ -1,0 +1,86 @@
+syntax = "proto3";
+
+package library;
+
+import "google/protobuf/timestamp.proto";
+import "protos/common.proto";
+
+// ============================================
+// MESSAGE DEFINITIONS (Data Structures)
+// ============================================
+
+// Book message - represents a book entity
+// Equivalent to BookResponse schema
+message Book {
+    int32 id = 1;
+    string title = 2;
+    string author = 3;
+    string isbn = 4;
+    optional string description = 5;
+    bool is_available = 6;
+    google.protobuf.Timestamp created_at = 7;
+    google.protobuf.Timestamp updated_at = 8;
+}
+
+// Request to create a new book
+// Equivalent to BookCreate schema
+message CreateBookRequest {
+    string title = 1;
+    string author = 2;
+    string isbn = 3;
+    optional string description = 4;
+}
+
+// Request to update an existing book
+// Equivalent to BookUpdate schema
+message UpdateBookRequest {
+    int32 id = 1;
+    optional string title = 2;
+    optional string author = 3;
+    optional string description = 4;
+    optional bool is_available = 5;
+} 
+
+// Request to get all books with optional filters
+message GetBooksRequest {
+    optional string title = 1; // Filter by title
+    optional string author = 2; // Filter by author
+}
+
+// Response containing list of books
+message GetBooksResponse {
+    repeated Book books = 1;
+}
+
+// Request to get a single book by id
+message GetBookRequest {
+    int32 id = 1; 
+}
+
+// Request to delete a book
+message DeleteBookRequest {
+    int32 id = 1;
+}
+
+
+// ============================================
+// SERVICE DEFINITION (RPC Methods)
+// ============================================
+
+service BookService {
+    // Get all books (with optional filters)
+    rpc GetBooks(GetBooksRequest) returns (GetBooksResponse);
+
+    // Get a single book by id
+    rpc GetBook(GetBookRequest) returns (Book);
+
+    // Create a new book
+    rpc CreateBook(CreateBookRequest) returns (Book);
+
+    // Update an existing book
+    rpc UpdateBook(UpdateBookRequest) returns (Book);
+
+    // Delete a book
+    rpc DeleteBook(DeleteBookRequest) returns (Empty);
+}
+
