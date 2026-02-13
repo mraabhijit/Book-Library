@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app import models
 from app.database import AsyncSessionLocal
-from app.grpc_handlers.helpers import datetime_to_timestamp
+from app.grpc_handlers.helpers import datetime_to_timestamp, get_current_user
 
 
 def book_to_proto(book: models.Book) -> books_pb2.Book:
@@ -48,6 +48,7 @@ class BookServicer(books_pb2_grpc.BookServiceServicer):
         request: books_pb2.GetBookRequest,
         context: grpc.aio.ServicerContext,
     ) -> books_pb2.Book:
+        await get_current_user(context)
         if request.id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "book_id must be positive"
@@ -68,6 +69,7 @@ class BookServicer(books_pb2_grpc.BookServiceServicer):
         request: books_pb2.CreateBookRequest,
         context: grpc.aio.ServicerContext,
     ) -> books_pb2.Book:
+        await get_current_user(context)
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(models.Book).where(models.Book.isbn == request.isbn)
@@ -102,9 +104,8 @@ class BookServicer(books_pb2_grpc.BookServiceServicer):
         """
         Update an existing book
         Equivalent to: PUT /api/books/{id}
-
-        TODO: Add authentication check
         """
+        await get_current_user(context)
         # Validation
         if request.id <= 0:
             await context.abort(
@@ -162,9 +163,8 @@ class BookServicer(books_pb2_grpc.BookServiceServicer):
         """
         Delete a book
         Equivalent to: DELETE /api/books/{id}
-
-        TODO: Add authentication check
         """
+        await get_current_user(context)
         # Validation
         if request.id <= 0:
             await context.abort(

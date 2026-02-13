@@ -5,7 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import models
 from app.database import AsyncSessionLocal
-from app.grpc_handlers.helpers import datetime_to_timestamp
+from app.grpc_handlers.helpers import datetime_to_timestamp, get_current_user
 
 
 def member_to_proto(member: models.Member) -> members_pb2.Member:
@@ -25,6 +25,7 @@ class MemberServicer(members_pb2_grpc.MemberServiceServicer):
         request: members_pb2.GetMembersRequest,
         context: grpc.aio.ServicerContext,
     ) -> members_pb2.GetMembersResponse:
+        await get_current_user(context)
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(models.Member))
             members = result.scalars().all()
@@ -37,6 +38,7 @@ class MemberServicer(members_pb2_grpc.MemberServiceServicer):
         request: members_pb2.GetMemberRequest,
         context: grpc.aio.ServicerContext,
     ) -> members_pb2.Member:
+        await get_current_user(context)
         if request.id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "member_id must be positive"
@@ -56,6 +58,7 @@ class MemberServicer(members_pb2_grpc.MemberServiceServicer):
         request: members_pb2.CreateMemberRequest,
         context: grpc.aio.ServicerContext,
     ) -> members_pb2.Member:
+        await get_current_user(context)
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(models.Member).where(
@@ -102,6 +105,7 @@ class MemberServicer(members_pb2_grpc.MemberServiceServicer):
         request: members_pb2.UpdateMemberRequest,
         context: grpc.aio.ServicerContext,
     ) -> members_pb2.Member:
+        await get_current_user(context)
         if request.id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "member_id must be positive"
@@ -145,6 +149,7 @@ class MemberServicer(members_pb2_grpc.MemberServiceServicer):
         request: members_pb2.DeleteMemberRequest,
         context: grpc.aio.ServicerContext,
     ) -> common_pb2.Empty:
+        await get_current_user(context)
         if request.id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT, "member_id must be positive"

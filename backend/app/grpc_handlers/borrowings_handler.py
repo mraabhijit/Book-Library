@@ -7,10 +7,9 @@ from sqlalchemy.orm import selectinload
 
 from app import models
 from app.database import AsyncSessionLocal
-
-from .books_handler import book_to_proto
-from .helpers import datetime_to_timestamp
-from .members_handler import member_to_proto
+from app.grpc_handlers.books_handler import book_to_proto
+from app.grpc_handlers.helpers import datetime_to_timestamp, get_current_user
+from app.grpc_handlers.members_handler import member_to_proto
 
 
 def borrowing_to_proto(borrowing: models.Borrowing) -> borrowings_pb2.BorrowResponse:
@@ -55,6 +54,7 @@ class BorrowingServicer(borrowings_pb2_grpc.BorrowingServiceServicer):
         request: borrowings_pb2.GetBorrowRequest,
         context: grpc.aio.ServicerContext,
     ) -> borrowings_pb2.GetBorrowingsResponse:
+        await get_current_user(context)
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(models.Borrowing)
@@ -72,6 +72,7 @@ class BorrowingServicer(borrowings_pb2_grpc.BorrowingServiceServicer):
         request: borrowings_pb2.GetBorrowRequest,
         context: grpc.aio.ServicerContext,
     ) -> borrowings_pb2.GetBorrowingsResponse:
+        await get_current_user(context)
         async with AsyncSessionLocal() as db:
             result = await db.execute(
                 select(models.Borrowing)
@@ -90,6 +91,7 @@ class BorrowingServicer(borrowings_pb2_grpc.BorrowingServiceServicer):
         request: borrowings_pb2.GetMemberBorrowingsRequest,
         context: grpc.aio.ServicerContext,
     ) -> borrowings_pb2.GetBorrowingsResponse:
+        await get_current_user(context)
         if request.id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
@@ -121,6 +123,7 @@ class BorrowingServicer(borrowings_pb2_grpc.BorrowingServiceServicer):
         request: borrowings_pb2.BorrowRequest,
         context: grpc.aio.ServicerContext,
     ) -> borrowings_pb2.BorrowResponse:
+        await get_current_user(context)
         if request.book_id <= 0 or request.member_id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,
@@ -173,6 +176,7 @@ class BorrowingServicer(borrowings_pb2_grpc.BorrowingServiceServicer):
         request: borrowings_pb2.ReturnRequest,
         context: grpc.aio.ServicerContext,
     ) -> borrowings_pb2.ReturnResponse:
+        await get_current_user(context)
         if request.book_id <= 0 or request.member_id <= 0:
             await context.abort(
                 grpc.StatusCode.INVALID_ARGUMENT,

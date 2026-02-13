@@ -5,6 +5,8 @@ from concurrent import futures
 import grpc
 from grpc_reflection.v1alpha import reflection
 from protos import (
+    auth_pb2,
+    auth_pb2_grpc,
     books_pb2,
     books_pb2_grpc,
     borrowings_pb2,
@@ -13,6 +15,7 @@ from protos import (
     members_pb2_grpc,
 )
 
+from app.grpc_handlers.auth_handler import AuthServicer
 from app.grpc_handlers.books_handler import BookServicer
 from app.grpc_handlers.borrowings_handler import BorrowingServicer
 from app.grpc_handlers.members_handler import MemberServicer
@@ -51,6 +54,10 @@ async def serve():
     # use the BookServicer class to handle them"
     #
     # Similar to FastAPI's: app.include_router(books_router)
+    auth_pb2_grpc.add_AuthServiceServicer_to_server(
+        AuthServicer(),
+        server,
+    )
     books_pb2_grpc.add_BookServiceServicer_to_server(
         BookServicer(),  # Your handler class (the implementation)
         server,  # The server to add it to
@@ -72,6 +79,7 @@ async def serve():
     # Think of it like FastAPI's automatic /docs endpoint
     SERVICE_NAMES = (
         # The full name of your BookService from the .proto file
+        auth_pb2.DESCRIPTOR.services_by_name["AuthService"].full_name,
         books_pb2.DESCRIPTOR.services_by_name["BookService"].full_name,
         members_pb2.DESCRIPTOR.services_by_name["MemberService"].full_name,
         borrowings_pb2.DESCRIPTOR.services_by_name["BorrowingService"].full_name,
