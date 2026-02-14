@@ -5,9 +5,12 @@ import { borrowingsAPI } from '@/lib/api';
 
 function BorrowingSection() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  const [view, setView] = useState<'current' | 'history' | 'member'>('current');
 
   // Data state
   const [borrowings, setBorrowings] = useState<any[]>([]);
+  const [limit, setLimit] = useState(10);
+  const [offset, setOffset] = useState(0);
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -18,10 +21,17 @@ function BorrowingSection() {
   const [bookId, setBookId] = useState('');
   const [memberId, setMemberId] = useState('');
 
-  // Fetch current borrowings on mount
+  // Auto-fetch data when pagination or view changes
   useEffect(() => {
-    fetchCurrentBorrowings();
-  }, []);
+    if (view === 'current') {
+      fetchCurrentBorrowings();
+    } else if (view === 'history') {
+      fetchAllBorrowings();
+    } else if (view === 'member' && memberId) {
+      // For member search, we only auto-fetch if we already have a memberId
+      fetchBorrowingsByMember();
+    }
+  }, [offset, limit, view]);
 
   // Clear success message after 2 seconds
   useEffect(() => {
@@ -35,7 +45,7 @@ function BorrowingSection() {
   const fetchAllBorrowings = async () => {
     setLoading(true);
     try {
-      const response = await borrowingsAPI.getAllBorrowings();
+      const response = await borrowingsAPI.getAllBorrowings({ limit, offset });
       setBorrowings(response.data);
       setError(null);
     } catch (err: any) {
@@ -49,8 +59,24 @@ function BorrowingSection() {
   const fetchCurrentBorrowings = async () => {
     setLoading(true);
     try {
-      const response = await borrowingsAPI.getCurrentBorrowings();
+      const response = await borrowingsAPI.getCurrentBorrowings({ limit, offset });
       setBorrowings(response.data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch borrowings by member ID
+  const fetchBorrowingsByMember = async () => {
+    if (!memberId) return;
+    setLoading(true);
+    try {
+      const response = await borrowingsAPI.getBorrowingsByMember(parseInt(memberId), { limit, offset });
+      setBorrowings(response.data);
+      setSuccess('Borrowing records found!');
       setError(null);
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
@@ -78,6 +104,8 @@ function BorrowingSection() {
       });
       setSuccess('Book borrowed successfully!');
       resetForm();
+      setView('current');
+      setOffset(0);
       fetchCurrentBorrowings();
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
@@ -97,6 +125,8 @@ function BorrowingSection() {
       });
       setSuccess('Book returned successfully!');
       resetForm();
+      setView('current');
+      setOffset(0);
       fetchCurrentBorrowings();
     } catch (err: any) {
       setError(err.response?.data?.detail || err.message);
@@ -105,22 +135,11 @@ function BorrowingSection() {
     }
   };
 
-  // Search borrowings by member ID
-  const handleSearchByMember = async (e: any) => {
+  // Search borrowings by member ID (Manual trigger)
+  const handleSearchByMember = (e: any) => {
     e.preventDefault();
-    setLoading(true);
-    try {
-      const response = await borrowingsAPI.getBorrowingsByMember(
-        parseInt(memberId),
-      );
-      setBorrowings(response.data);
-      setSuccess('Borrowing records found!');
-      setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || err.message);
-    } finally {
-      setLoading(false);
-    }
+    setOffset(0);
+    setView('member');
   };
 
   // Format date for display
@@ -141,15 +160,24 @@ function BorrowingSection() {
       {success && <div className="message success-message">{success}</div>}
 
       <div className="action-buttons">
-        <button onClick={fetchCurrentBorrowings}>Current Borrowings</button>
-        <button onClick={fetchAllBorrowings}>All History</button>
-        <button onClick={() => setActiveAction('borrowBook')}>
-          Borrow Book
+        <button 
+          className={view === 'current' ? 'active' : ''} 
+          onClick={() => { setView('current'); setOffset(0); }}
+        >
+          Current Borrowings
         </button>
-        <button onClick={() => setActiveAction('returnBook')}>
-          Return Book
+        <button 
+          className={view === 'history' ? 'active' : ''} 
+          onClick={() => { setView('history'); setOffset(0); }}
+        >
+          All History
         </button>
-        <button onClick={() => setActiveAction('searchByMember')}>
+        <button onClick={() => setActiveAction('borrowBook')}>Borrow Book</button>
+        <button onClick={() => setActiveAction('returnBook')}>Return Book</button>
+        <button 
+          className={view === 'member' ? 'active' : ''} 
+          onClick={() => setActiveAction('searchByMember')}
+        >
           Search by Member
         </button>
       </div>
@@ -229,50 +257,81 @@ function BorrowingSection() {
       )}
 
       <div className="data-table">
-        <h3>Borrowings List ({borrowings.length})</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">
+            {view === 'current' ? 'Current Borrowings' : view === 'history' ? 'Borrowing History' : `Member ${memberId} Records`} 
+            {borrowings.length > 0 ? ` (${offset + 1} - ${offset + borrowings.length})` : ' (Empty)'}
+          </h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Rows per page:</span>
+            <select 
+              value={limit}
+              onChange={(e) => { setLimit(Number(e.target.value)); setOffset(0); }}
+              className="bg-white border-2 border-gray-200 text-xs rounded-md px-2 py-1 outline-none focus:border-[#7dd3e8] transition-colors cursor-pointer"
+            >
+              {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
+        
         {loading && !activeAction ? (
           <p className="loading-text">Loading Borrowings...</p>
         ) : borrowings.length === 0 ? (
-          <p className="no-data-text">No Borrowing Records Found</p>
+          <p className="no-data-text">No borrowing records found</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Book Title</th>
-                <th>Member Name</th>
-                <th>Member Email</th>
-                <th>Borrowed Date</th>
-                <th>Due Date</th>
-                <th>Returned Date</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {borrowings.map((borrowing) => (
-                <tr key={borrowing.id}>
-                  <td>{borrowing.id}</td>
-                  <td>{borrowing.book?.title || '-'}</td>
-                  <td>{borrowing.member?.name || '-'}</td>
-                  <td>{borrowing.member?.email || '-'}</td>
-                  <td>{formatDate(borrowing.borrowed_date)}</td>
-                  <td>{formatDate(borrowing.due_date)}</td>
-                  <td>{formatDate(borrowing.returned_date)}</td>
-                  <td>
-                    <span
-                      className={
-                        borrowing.returned_date
-                          ? 'status-returned'
-                          : 'status-borrowed'
-                      }
-                    >
-                      {borrowing.returned_date ? 'Returned' : 'Borrowed'}
-                    </span>
-                  </td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Book Title</th>
+                  <th>Member Name</th>
+                  <th>Borrowed Date</th>
+                  <th>Due Date</th>
+                  <th>Returned Date</th>
+                  <th>Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {borrowings.map((borrowing) => (
+                  <tr key={borrowing.id}>
+                    <td>{borrowing.id}</td>
+                    <td>{borrowing.book?.title || '-'}</td>
+                    <td>{borrowing.member?.name || '-'}</td>
+                    <td>{formatDate(borrowing.borrowed_date)}</td>
+                    <td>{formatDate(borrowing.due_date)}</td>
+                    <td>{formatDate(borrowing.returned_date)}</td>
+                    <td>
+                      <span className={borrowing.returned_date ? 'status-returned' : 'status-borrowed'}>
+                        {borrowing.returned_date ? 'Returned' : 'Borrowed'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="pagination-controls flex items-center justify-end gap-4 mt-6 py-4 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setOffset(Math.max(0, offset - limit))}
+                  disabled={offset === 0 || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Previous
+                </button>
+                <div className="px-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-lg text-sm min-w-[100px] text-center font-bold text-gray-700">
+                  Page {Math.floor(offset / limit) + 1}
+                </div>
+                <button 
+                  onClick={() => setOffset(offset + limit)}
+                  disabled={borrowings.length < limit || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

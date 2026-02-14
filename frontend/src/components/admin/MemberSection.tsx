@@ -5,7 +5,13 @@ import { membersAPI } from '@/lib/api';
 
 function MemberSection() {
   const [activeAction, setActiveAction] = useState<string | null>(null);
+  
+  // Data state
   const [members, setMembers] = useState<any[]>([]);
+  const [limit, setLimit] = useState(10);
+  const [offset, setOffset] = useState(0);
+
+  // UI States
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -17,7 +23,7 @@ function MemberSection() {
 
   useEffect(() => {
     fetchMembers();
-  }, []);
+  }, [offset, limit]);
 
   useEffect(() => {
     if (success) {
@@ -29,7 +35,7 @@ function MemberSection() {
   const fetchMembers = async () => {
     setLoading(true);
     try {
-      const response = await membersAPI.getMembers();
+      const response = await membersAPI.getMembers({ limit, offset });
       setMembers(response.data);
       setError(null);
     } catch (err: any) {
@@ -136,7 +142,7 @@ function MemberSection() {
       {success && <div className="message success-message">{success}</div>}
 
       <div className="action-buttons">
-        <button onClick={fetchMembers}>Get Members</button>
+        <button onClick={() => { if(offset === 0) fetchMembers(); else setOffset(0); }}>Get Members</button>
         <button onClick={() => setActiveAction('createMember')}>
           Add Member
         </button>
@@ -262,32 +268,67 @@ function MemberSection() {
       )}
 
       <div className="data-table">
-        <h3>Members List ({members.length})</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Members List {members.length > 0 ? `(${offset + 1} - ${offset + members.length})` : '(Empty)'}</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Rows per page:</span>
+            <select 
+              value={limit}
+              onChange={(e) => { setLimit(Number(e.target.value)); setOffset(0); }}
+              className="bg-white border-2 border-gray-200 text-xs rounded-md px-2 py-1 outline-none focus:border-[#7dd3e8] transition-colors cursor-pointer"
+            >
+              {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
         {loading && !activeAction ? (
           <p className="loading-text">Loading Members...</p>
         ) : members.length === 0 ? (
           <p className="no-data-text">No Members Found</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone Number</th>
-              </tr>
-            </thead>
-            <tbody>
-              {members.map((member) => (
-                <tr key={member.id}>
-                  <td>{member.id}</td>
-                  <td>{member.name || '-'}</td>
-                  <td>{member.email}</td>
-                  <td>{member.phone || '-'}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Phone Number</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {members.map((member) => (
+                  <tr key={member.id}>
+                    <td>{member.id}</td>
+                    <td>{member.name || '-'}</td>
+                    <td>{member.email}</td>
+                    <td>{member.phone || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="pagination-controls flex items-center justify-end gap-4 mt-6 py-4 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setOffset(Math.max(0, offset - limit))}
+                  disabled={offset === 0 || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Previous
+                </button>
+                <div className="px-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-lg text-sm min-w-[100px] text-center font-bold text-gray-700">
+                  Page {Math.floor(offset / limit) + 1}
+                </div>
+                <button 
+                  onClick={() => setOffset(offset + limit)}
+                  disabled={members.length < limit || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

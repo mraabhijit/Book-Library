@@ -117,18 +117,18 @@ export const membersAPI = {
 // Borrowings API
 export const borrowingsAPI = {
     // Get all borrowings
-    getAllBorrowings: () => {
-        return api.get('/borrowings/history');
+    getAllBorrowings: (params = {}) => {
+        return api.get('/borrowings/history', { params });
     },
 
     // Get current borrowings
-    getCurrentBorrowings: () => {
-        return api.get('/borrowings/');
+    getCurrentBorrowings: (params = {}) => {
+        return api.get('/borrowings/', { params });
     },
 
     // Get borrowings by Member
-    getBorrowingsByMember: (memberId: number) => {
-        return api.get(`/borrowings/members/${memberId}`);
+    getBorrowingsByMember: (memberId: number, params = {}) => {
+        return api.get(`/borrowings/members/${memberId}`, { params });
     },
 
     // Borrow a book
