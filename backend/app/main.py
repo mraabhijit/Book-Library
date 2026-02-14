@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.database import engine
+from app.redis_client import close_redis, init_redis
 from app.routers import auth, books, borrowings, members
 
 
@@ -15,7 +16,9 @@ async def lifespan(_app: FastAPI):
     Handles startup and shutdown events.
     Database schema is managed via Alembic migrations.
     """
+    await init_redis()
     yield
+    await close_redis()
     await engine.dispose()
 
 

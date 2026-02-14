@@ -10,6 +10,7 @@ class Settings(BaseSettings):
 
     secret_key: SecretStr
     database_url: str
+    redis_url: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
 

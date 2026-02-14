@@ -65,6 +65,8 @@ h11==0.16.0
     # via
     #   httpcore
     #   uvicorn
+hiredis==3.3.0
+    # via backend
 httpcore==1.0.9
     # via httpx
 httptools==0.7.1
