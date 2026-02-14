@@ -409,9 +409,11 @@ After running `seed_data.py`, you'll have:
 
 ```
 LibraryApp/
+
 ├── backend/
 │   ├── app/
-│   │   ├── routers/          # API endpoints
+│   │   ├── grpc_handlers/    # gRPC endpoints
+│   │   ├── routers/          # REST API endpoints
 │   │   ├── models.py         # Database models
 │   │   ├── schemas.py        # Pydantic schemas
 │   │   ├── database.py       # Database connection
@@ -419,10 +421,16 @@ LibraryApp/
 │   │   ├── utils.py          # Utility functions
 │   │   └── main.py           # FastAPI application
 │   ├── alembic/              # Database migrations
+│   ├── protos/               # Proto files
 │   ├── Dockerfile
 │   ├── seed_data.py          # Seed Data
 │   ├── requirements.txt
 │   └── pyproject.toml
+├── benchmarks/
+│   ├── benchmark_rest.py
+│   └── benchmark_grpc.py
+├── monitoring/
+│   └── prometheus.yml
 ├── frontend/
 │   ├── src/
 │   │   ├── app/              # Next.js pages
@@ -434,6 +442,19 @@ LibraryApp/
 │   └── package.json
 └── docker-compose.yml
 ```
+
+## Performance Comparison
+For this simple backend REST outforms gRPC by a good margin and that is evident by the test results.
+
+Benchmark setup: 50 users, 20 requests/user
+
+METRIC | FastAPI (async) | gRPC (100 workers)
+---|---|---
+Total Requests| 1100 | 1100
+Total Time(s) | 12.27 | 50.99
+Throughput(req/s) | 89.67 | 21.57
+Avg Latency(ms) | 486.52 | 2312.18
+P95 Latency(ms) | 2355.10 | 16183.18
 
 ## Troubleshooting
 
