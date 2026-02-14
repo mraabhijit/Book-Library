@@ -8,6 +8,8 @@ function BookSection() {
 
   // Data state
   const [books, setBooks] = useState<any[]>([]);
+  const [limit, setLimit] = useState(10);
+  const [offset, setOffset] = useState(0);
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -25,7 +27,7 @@ function BookSection() {
   // Fetch books
   useEffect(() => {
     fetchBooks();
-  }, []);
+  }, [offset, limit]);
 
   // Clear success message after 2 seconds
   useEffect(() => {
@@ -39,7 +41,7 @@ function BookSection() {
   const fetchBooks = async () => {
     setLoading(true);
     try {
-      const response = await booksAPI.getBooks();
+      const response = await booksAPI.getBooks({ limit, offset });
       setBooks(response.data);
       setError(null);
     } catch (err : any) {
@@ -151,7 +153,7 @@ function BookSection() {
       {success && <div className="message success-message">{success}</div>}
 
       <div className="action-buttons">
-        <button onClick={fetchBooks}>Get Books</button>
+        <button onClick={() => { if(offset === 0) fetchBooks(); else setOffset(0); }}>Get Books</button>
         <button onClick={() => setActiveAction('createBook')}>Add Book</button>
         <button onClick={() => setActiveAction('updateBook')}>Edit Book</button>
         <button onClick={() => setActiveAction('searchBook')}>
@@ -289,36 +291,71 @@ function BookSection() {
       )}
 
       <div className="data-table">
-        <h3>Books List ({books.length})</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Books List {books.length > 0 ? `(${offset + 1} - ${offset + books.length})` : '(Empty)'}</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium">Rows per page:</span>
+            <select 
+              value={limit}
+              onChange={(e) => { setLimit(Number(e.target.value)); setOffset(0); }}
+              className="bg-white border-2 border-gray-200 text-xs rounded-md px-2 py-1 outline-none focus:border-[#7dd3e8] transition-colors cursor-pointer"
+            >
+              {[10, 20, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+        </div>
         {loading && !activeAction ? (
           <p className="loading-text">Loading Books...</p>
         ) : books.length === 0 ? (
           <p className="no-data-text">No Books Found</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Title</th>
-                <th>Author</th>
-                <th>ISBN</th>
-                <th>Description</th>
-                <th>Available</th>
-              </tr>
-            </thead>
-            <tbody>
-              {books.map((book) => (
-                <tr key={book.id}>
-                  <td>{book.id}</td>
-                  <td>{book.title}</td>
-                  <td>{book.author}</td>
-                  <td>{book.isbn}</td>
-                  <td>{book.description || '-'}</td>
-                  <td>{book.is_available ? 'Yes' : 'No'}</td>
+          <>
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>ISBN</th>
+                  <th>Description</th>
+                  <th>Available</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {books.map((book) => (
+                  <tr key={book.id}>
+                    <td>{book.id}</td>
+                    <td>{book.title}</td>
+                    <td>{book.author}</td>
+                    <td>{book.isbn}</td>
+                    <td>{book.description || '-'}</td>
+                    <td>{book.is_available ? 'Yes' : 'No'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="pagination-controls flex items-center justify-end gap-4 mt-6 py-4 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setOffset(Math.max(0, offset - limit))}
+                  disabled={offset === 0 || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Previous
+                </button>
+                <div className="px-4 py-2 bg-gray-50 border-2 border-gray-100 rounded-lg text-sm min-w-[100px] text-center font-bold text-gray-700">
+                  Page {Math.floor(offset / limit) + 1}
+                </div>
+                <button 
+                  onClick={() => setOffset(offset + limit)}
+                  disabled={books.length < limit || loading}
+                  className="px-4 py-2 bg-white text-[#7dd3e8] border-2 border-[#7dd3e8] hover:bg-[#7dd3e8] hover:text-white disabled:opacity-30 rounded-lg transition-all text-sm disabled:cursor-not-allowed font-bold"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

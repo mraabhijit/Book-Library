@@ -22,7 +22,10 @@ router = APIRouter()
 
 @router.get("", response_model=list[BorrowResponse])
 async def get_current_borrowing_records(
-    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
+    offset: int = 0,
 ):
     records = await db.execute(
         select(models.Borrowing)
@@ -30,6 +33,8 @@ async def get_current_borrowing_records(
         .options(selectinload(models.Borrowing.member))
         .where(models.Borrowing.returned_date.is_(None))
         .order_by(models.Borrowing.borrowed_date.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return records.scalars().all()
 
@@ -39,6 +44,8 @@ async def get_borrowing_records_by_member_id(
     member_id: int,
     current_user: CurrentUser,
     db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
+    offset: int = 0,
 ):
     if member_id <= 0:
         raise HTTPException(
@@ -61,19 +68,26 @@ async def get_borrowing_records_by_member_id(
         .options(selectinload(models.Borrowing.member))
         .where(models.Borrowing.member_id == member_id)
         .order_by(models.Borrowing.borrowed_date.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return records.scalars().all()
 
 
 @router.get("/history", response_model=list[BorrowResponse])
 async def get_borrowing_records(
-    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
+    offset: int = 0,
 ):
     records = await db.execute(
         select(models.Borrowing)
         .options(selectinload(models.Borrowing.book))
         .options(selectinload(models.Borrowing.member))
         .order_by(models.Borrowing.borrowed_date.desc())
+        .limit(limit)
+        .offset(offset)
     )
     return records.scalars().all()
 

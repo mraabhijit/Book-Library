@@ -17,12 +17,17 @@ async def get_books(
     db: Annotated[AsyncSession, Depends(get_db)],
     title: str | None = None,
     author: str | None = None,
+    limit: int = 10,
+    offset: int = 0,
 ):
     query = select(models.Book)
     if title:
         query = query.where(models.Book.title.ilike(f"%{title}%"))
     if author:
         query = query.where(models.Book.author.ilike(f"%{author}%"))
+
+    query = query.limit(limit).offset(offset)
+
     result = await db.execute(query)
     return result.scalars().all()
 

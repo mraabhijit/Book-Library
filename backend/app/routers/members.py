@@ -14,9 +14,12 @@ router = APIRouter()
 
 @router.get("", response_model=list[MemberResponse])
 async def get_members(
-    current_user: CurrentUser, db: Annotated[AsyncSession, Depends(get_db)]
+    current_user: CurrentUser,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 10,
+    offset: int = 0,
 ):
-    result = await db.execute(select(models.Member))
+    result = await db.execute(select(models.Member).limit(limit).offset(offset))
     return result.scalars().all()
 
 
