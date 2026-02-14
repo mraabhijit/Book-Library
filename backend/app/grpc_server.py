@@ -24,7 +24,6 @@ from app.grpc_handlers import (
     MemberServicer,
 )
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ async def serve():
     server = grpc.aio.server(
         # ThreadPoolExecutor: Manages worker threads for handling requests
         # max_workers=10 means up to 10 requests can be processed simultaneously
-        futures.ThreadPoolExecutor(max_workers=10),
+        futures.ThreadPoolExecutor(max_workers=100),
         interceptors=[AsyncPromServerInterceptor()],
         # Options: Configuration for the server
         options=[
