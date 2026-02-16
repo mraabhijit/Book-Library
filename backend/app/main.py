@@ -1,12 +1,21 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
+from requests import Request
 
 from app.database import engine
 from app.redis_client import close_redis, init_redis
 from app.routers import auth, books, borrowings, members
+from app.exceptions import (
+    ActionForbiddenError,
+    AlreadyExistsError,
+    InvalidCredentialsError,
+    LibraryException,
+    NotFoundError,
+)
 
 
 @asynccontextmanager
@@ -46,17 +55,29 @@ app.include_router(members.router, prefix="/api/members", tags=["members"])
 app.include_router(borrowings.router, prefix="/api/borrowings", tags=["borrowings"])
 
 
+@app.exception_handler(LibraryException)
+async def library_exception_handler(request: Request, exc: LibraryException):
+    status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+
+    if isinstance(exc, NotFoundError):
+        status_code = status.HTTP_404_NOT_FOUND
+    elif isinstance(exc, AlreadyExistsError):
+        status_code = status.HTTP_409_CONFLICT
+    elif isinstance(exc, ActionForbiddenError):
+        status_code = status.HTTP_400_BAD_REQUEST
+    elif isinstance(exc, InvalidCredentialsError):
+        status_code = status.HTTP_401_UNAUTHORIZED
+
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": exc.message},
+    )
+
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Root endpoint to verify API is running"""
     return {
         "message": "Welcome to Neighborhood Library API",
         "docs": "/docs",
-        "health": "/health",
     }
-
-
-@app.get("/health", include_in_schema=False)
-async def health_check():
-    """Health check endpoint for monitoring"""
-    return {"status": "healthy"}
