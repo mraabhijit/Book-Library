@@ -28,12 +28,12 @@ services:
       timeout: 5s
       retries: 5
 
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - '6379:6379'
-  #   networks:
-  #     - library-network
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - library-network
 
   backend:
     build:
@@ -48,8 +48,8 @@ services:
       resources:
         limits:
           cpus: '1.0'
-    ports:
-      - '8000:8000'
+    # ports:
+    #   - '8000:8000'
     networks:
       - library-network
 
@@ -107,4 +107,4 @@ networks:
   library-network:
     # To allow containers to communicate with each other
     # within the network and isolate from other containers
-    driver: bridge
+    external: true
