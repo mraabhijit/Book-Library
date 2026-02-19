@@ -28,12 +28,12 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - '6379:6379'
-    networks:
-      - library-network
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - '6379:6379'
+  #   networks:
+  #     - library-network
 
   backend:
     build:
@@ -53,37 +53,37 @@ services:
     networks:
       - library-network
 
-  grpc-server:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    command: ["uv", "run", "python", "-m", "app.grpc_server"]
-    env_file:
-      - backend/.env.docker
-    depends_on:
-      postgres:
-        condition: service_healthy
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-    ports:
-      - '50052:50052'
-      - '9000:9000'
-    networks:
-      - library-network
+  # grpc-server:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: Dockerfile
+  #   command: ["uv", "run", "python", "-m", "app.grpc_server"]
+  #   env_file:
+  #     - backend/.env.docker
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #   ports:
+  #     - '50052:50052'
+  #     - '9000:9000'
+  #   networks:
+  #     - library-network
 
-  prometheus:
-    image: prom/prometheus:latest
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    ports:
-      - '9090:9090'
-    depends_on:
-      - backend
-      - grpc-server
-    networks:
-      - library-network
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   volumes:
+  #     - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+  #   ports:
+  #     - '9090:9090'
+  #   depends_on:
+  #     - backend
+  #     - grpc-server
+  #   networks:
+  #     - library-network
 
   frontend:
     build:
