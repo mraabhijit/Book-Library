@@ -7,6 +7,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from requests import Request
 
 from app.database import engine
+from app.config import settings
 from app.redis_client import close_redis, init_redis
 from app.routers import auth, books, borrowings, members
 from app.exceptions import (
@@ -16,6 +17,7 @@ from app.exceptions import (
     LibraryException,
     NotFoundError,
 )
+from pubsub import get_connection
 
 
 @asynccontextmanager
@@ -26,7 +28,14 @@ async def lifespan(_app: FastAPI):
     Database schema is managed via Alembic migrations.
     """
     await init_redis()
+
+    # RMQ
+    rmq_conn = await get_connection(settings.rabbitmq_url)
+    _app.state.rmq_channel = await rmq_conn.channel()
+
     yield
+
+    await rmq_conn.close()
     await close_redis()
     await engine.dispose()
 

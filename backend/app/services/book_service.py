@@ -1,19 +1,24 @@
 from typing import Annotated
 
+import aio_pika
 from fastapi import Depends
 from fastapi.encoders import jsonable_encoder
 
+from app.dependencies import get_rmq_channel
 from app.redis_client import delete_cache, get_cache, invalidate_prefix, set_cache
 from app.repositories.unit_of_work import UnitOfWork
 from app.schemas import BookCreate, BookUpdate
+from pubsub import Topology, publish_json
 
 
 class BookService:
     def __init__(
         self,
         uow: Annotated[UnitOfWork, Depends(UnitOfWork)],
+        rmq_channel: Annotated[aio_pika.RobustChannel, Depends(get_rmq_channel)],
     ):
         self.uow = uow
+        self.rmq_channel = rmq_channel
 
     async def get_books(
         self,
@@ -59,6 +64,19 @@ class BookService:
             await self.uow.session.refresh(new_book)
 
         await invalidate_prefix("books:list")
+
+        await publish_json(
+            channel=self.rmq_channel,
+            exchange=Topology.DIRECT_EXCHANGE,
+            key=Topology.CREATION_KEY,
+            val={
+                "event": "book_created",
+                "book_id": new_book.id,
+                "title": new_book.title,
+                "author": new_book.author,
+                "description": new_book.description or "",
+            },
+        )
         return new_book
 
     async def update_book(
