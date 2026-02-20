@@ -1,14 +1,13 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, status
+from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_fastapi_instrumentator import Instrumentator
-from requests import Request
+from pubsub import get_connection
 
+from app.config import settings
 from app.database import engine
-from app.redis_client import close_redis, init_redis
-from app.routers import auth, books, borrowings, members
 from app.exceptions import (
     ActionForbiddenError,
     AlreadyExistsError,
@@ -16,6 +15,8 @@ from app.exceptions import (
     LibraryException,
     NotFoundError,
 )
+from app.redis_client import close_redis, init_redis
+from app.routers import auth, books, borrowings, members
 
 
 @asynccontextmanager
@@ -25,8 +26,23 @@ async def lifespan(_app: FastAPI):
     Handles startup and shutdown events.
     Database schema is managed via Alembic migrations.
     """
-    await init_redis()
+    try:
+        await init_redis()
+    except Exception as e:
+        print("WARNING :: Redis Unreachble: ", e)
+
+    # RMQ
+    try:
+        rmq_conn = await get_connection(settings.rabbitmq_url)
+        _app.state.rmq_channel = await rmq_conn.channel()
+    except Exception as e:
+        print("WARNING: RabbitMQ Unreachable: ", e)
+        rmq_conn = None
+
     yield
+
+    if rmq_conn:
+        await rmq_conn.close()
     await close_redis()
     await engine.dispose()
 
