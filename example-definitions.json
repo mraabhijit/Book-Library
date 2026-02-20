@@ -1,4 +1,24 @@
 {
+    "vhosts": [
+        { "name": "/" }
+    ],
+    "users": [
+        {
+        "name": "rabbit",
+        "password_hash": "...",
+        "hashing_algorithm": "rabbit_password_hashing_sha256",
+        "tags": ["administrator"]
+        }
+    ],
+    "permissions": [
+        {
+        "user": "rabbit",
+        "vhost": "/",
+        "configure": ".*",
+        "write": ".*",
+        "read": ".*"
+        }
+    ],
     "routing": {
         "direct_exchange": "book.events",
         "dead_letter_exchange": "book.dlx",
@@ -16,13 +36,15 @@
     },
     "exchanges": [
         {
-            "name": "book.events", 
+            "name": "book.events",
+            "vhost": "/",
             "type": "direct",
             "durable": true,
             "auto-delete": false
         },
         {
             "name": "book.dlx",
+            "vhost": "/",
             "type": "direct",
             "durable": true,
             "auto-delete": false
@@ -31,6 +53,7 @@
     "queues": [
         {
             "name": "q.book.created",
+            "vhost": "/",
             "durable": true,
             "arguments": {
                 "x-dead-letter-exchange": "book.dlx"
@@ -38,16 +61,19 @@
         },
         {
             "name": "q.book.borrowed",
+            "vhost": "/",
             "durable": true,
             "arguments": {}
         },
         {
             "name": "q.book.returned",
+            "vhost": "/",
             "durable": true,
             "arguments": {}
         },
         {
             "name": "q.book.created.dlq",
+            "vhost": "/",
             "durable": true,
             "arguments": {}
         }
@@ -55,24 +81,28 @@
     "bindings": [
         {
             "source": "book.events",
+            "vhost": "/",
             "destination": "q.book.created",
             "routing_key": "book.created",
             "destination_type": "queue"
         },
         {
             "source": "book.events",
+            "vhost": "/",
             "destination": "q.book.borrowed",
             "routing_key": "book.borrowed",
             "destination_type": "queue"
         },
         {
             "source": "book.events",
+            "vhost": "/",
             "destination": "q.book.returned",
             "routing_key": "book.returned",
             "destination_type": "queue"
         },
         {
             "source": "book.dlx",
+            "vhost": "/",
             "destination": "q.book.created.dlq",
             "routing_key": "book.created",
             "destination_type": "queue"

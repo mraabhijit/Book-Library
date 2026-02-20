@@ -1,7 +1,8 @@
 import json
+import os
 from pathlib import Path
 
-_DEFS_PATH = Path(__file__).resolve().parent.parent.parent / "definitions.json"
+_DEFS_PATH = Path(os.getcwd()) / "definitions.json"
 
 with open(_DEFS_PATH, "r") as f:
     _defs = json.load(f)["routing"]

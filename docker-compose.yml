@@ -28,17 +28,17 @@ services:
       timeout: 5s
       retries: 5
 
-  # redis:
-  #   image: redis:7-alpine
-  #   ports:
-  #     - '6379:6379'
-  #   networks:
-  #     - library-network
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    networks:
+      - library-network
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     env_file:
       - backend/.env.docker
     depends_on:
@@ -52,6 +52,8 @@ services:
     #   - '8000:8000'
     networks:
       - library-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   # grpc-server:
   #   build:

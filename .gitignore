@@ -82,3 +82,6 @@ frontend-vite/*
 
 # .next
 .next/
+
+# definitions
+definitions.json
