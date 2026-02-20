@@ -34,6 +34,28 @@ services:
       - '6379:6379'
     networks:
       - library-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbit:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - "./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro"
+      - "./definitions.json:/etc/rabbitmq/definitions.json:ro"
+    networks:
+      - library-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
 
   backend:
     build:
@@ -43,6 +65,10 @@ services:
       - backend/.env.docker
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbit:
         condition: service_healthy
     deploy:
       resources:
@@ -54,6 +80,19 @@ services:
       - library-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    env_file:
+      - notification-service/.env.docker
+    depends_on:
+      rabbit:
+        condition: service_healthy
+    networks:
+      - library-network
 
   # grpc-server:
   #   build:

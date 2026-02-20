@@ -85,3 +85,6 @@ frontend-vite/*
 
 # definitions
 definitions.json
+
+# Executables
+*.exe
