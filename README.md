@@ -1,60 +1,91 @@
 # Neighborhood Library Management System
 
-A full-stack web application for managing a neighborhood library's books, members, and borrowing operations.
+A full-stack web application for managing a neighborhood library's books, members, and borrowing operations. Built to explore and benchmark different backend communication patterns (REST vs gRPC) and infrastructure layers (Redis caching, RabbitMQ messaging, Prometheus monitoring).
 
 ## Technology Stack
 
 ### Backend
 
-- Python 3.11+
-- FastAPI (REST API framework)
-- SQLAlchemy 2.0 (ORM with async support)
-- PostgreSQL 15
-- Alembic (database migrations)
-- Pydantic v2 (data validation)
+- **Python 3.11+**
+- **FastAPI** — REST API framework with async support
+- **gRPC** — Alternative high-performance RPC server (parallel implementation)
+- **SQLAlchemy 2.0** — Async ORM
+- **PostgreSQL 15** — Primary database
+- **Alembic** — Database migrations
+- **Pydantic v2** — Data validation & settings
+- **Redis 7** — Response caching (with automatic invalidation)
+- **RabbitMQ** — Message broker for asynchronous event publishing
+- **Prometheus** — Metrics collection (`prometheus-fastapi-instrumentator`)
+- **pwdlib** — Password hashing
+- **asyncpg** — Async PostgreSQL driver
 
 ### Frontend
 
-- Next.js 16 (React framework)
-- TypeScript
-- Tailwind CSS
-- Axios (HTTP client)
+#### Next.js (Primary)
+- **Next.js 14** (App Router)
+- **TypeScript**
+- **Tailwind CSS**
+- **Axios** / React Context API
+
+#### Vite (Alternative)
+- **React + Vite**
+- **Vanilla CSS**
+
+### Notification Service
+
+- **Go** — Standalone microservice
+- **RabbitMQ** (amqp091-go) — Consumes borrow/return events
+- Supports **email** and **SMS** notification stubs
 
 ### Infrastructure
 
-- Docker & Docker Compose
-- PostgreSQL (containerized)
+- **Docker & Docker Compose** — Full containerized environment
+- **Prometheus** — Metrics scraping (configurable)
+- **RabbitMQ Management UI** — Available at port 15672
+
+---
 
 ## Features
 
 ### Core Functionality
 
-- Create, read, update, and delete books
-- Create, read, update, and delete members
-- Borrow books (with due date tracking)
-- Return books
-- View borrowing history
-- Query books borrowed by specific members
+- Create, read, update, and delete **books**
+- Create, read, update, and delete **members**
+- **Borrow books** — with automatic due date (14 days) and availability tracking
+- **Return books** — with timestamp and status update
+- View **active borrowings** and complete **borrowing history**
+- Query borrowings for a specific member
 
 ### Additional Features
 
-- Staff authentication and authorization
-- Automatic due date calculation (14 days from borrow date)
-- Validation to prevent deleting books that are borrowed or have borrowing history
-- Validation to prevent deleting members with borrowing history
-- Comprehensive error handling
+- **Staff authentication** — JWT-based with OAuth2 password flow
+- **Redis caching** — GET endpoints cached; cache invalidated on mutations
+- **Event publishing** — Borrow/return actions publish events to RabbitMQ
+- **Notification service** — Go microservice consumes events and dispatches notifications
+- **Prometheus metrics** — REST API instrumented; gRPC server exposes metrics on port 9000
+- **gRPC server** — Parallel implementation exposing the same domain via proto-defined services
+- **Repository pattern** — Decoupled data access layer with protocol-defined interfaces
+- **Service layer** — Business logic isolated from transport layer
+- Validation: prevents deleting books that are borrowed or have borrowing history
+- Validation: prevents deleting members with borrowing history
+
+---
 
 ## Prerequisites
 
-- Docker and Docker Compose
-- Git
+- **Docker** and **Docker Compose**
+- **Git**
 
 For local development without Docker:
 
-- Python 3.11+
-- **uv** (recommended) or **Miniconda** for Python dependency management
+- Python 3.11+ with **uv** (recommended) or **Conda**
 - Node.js 20+
+- Go 1.21+
 - PostgreSQL 15+
+- Redis 7+
+- RabbitMQ 3+
+
+---
 
 ## Quick Start with Docker Compose
 
@@ -65,76 +96,100 @@ git clone <repository-url>
 cd LibraryApp
 ```
 
-### 2. Set Up Environment Variables
+### 2. Create a Docker Network
 
-Create a `backend/.env.docker` file with the following content:
+The compose file uses an external network. Create it once:
 
 ```bash
-# backend/.env.docker
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/library
+docker network create library-network
 ```
 
-If needed, create a secret key with the following in the terminal and set it to the `SECRET_KEY`
+### 3. Set Up Environment Variables
+
+**`backend/.env.docker`**
+
+```bash
+SECRET_KEY=your-secret-key-here
+DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/library
+REDIS_URL=redis://redis:6379
+RABBITMQ_URL=amqp://guest:guest@rabbit:5672/
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+```
+
+Generate a secret key:
+
 ```bash
 python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-Create a `frontend/.env.docker` file with the following content:
+**`frontend/.env.docker`**
 
 ```bash
-# frontend/.env.docker
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-### 3. Start All Services
+**`notification-service/.env.docker`**
+
+```bash
+RABBITMQ_URL=amqp://guest:guest@rabbit:5672/
+```
+
+### 4. Start All Services
 
 ```bash
 docker-compose up -d --build
 ```
 
-This will start:
+This starts:
 
-- PostgreSQL database on port 5432
-- Backend API on port 8000
-- Frontend application on port 3000
+| Service               | Port(s)         | Description                          |
+|-----------------------|-----------------|--------------------------------------|
+| `postgres`            | 5433 (host)     | PostgreSQL database                  |
+| `redis`               | 6379            | Redis cache                          |
+| `rabbit`              | 5672, 15672     | RabbitMQ broker + management UI      |
+| `backend`             | (internal only) | FastAPI REST + gRPC server           |
+| `notification-service`| (internal only) | Go event consumer                    |
+| `frontend`            | 3000            | Next.js frontend                     |
 
-### 4. Run Database Migrations
+> **Note:** The backend port (8000) is intentionally not exposed to the host by default in `docker-compose.yml`. Uncomment the `ports` section under `backend` if you need direct access.
+
+### 5. Run Database Migrations
 
 ```bash
 docker-compose exec backend uv run alembic upgrade head
 ```
 
-### 5. (Optional) Seed Sample Data
-
-To populate the database with sample data for testing:
+### 6. (Optional) Seed Sample Data
 
 ```bash
 docker-compose exec backend uv run python seed_data.py
 ```
 
-This will create:
+This creates:
 
-- 2 staff users (admin/admin123, staff1/staff123)
+- 2 staff users (admin@library.com / admin123, staff1@library.com / staff123)
 - 10 books (8 available, 2 currently borrowed)
 - 5 members
 - 5 borrowing records (2 active, 3 returned)
 
-### 6. Access the Application
+### 7. Access the Application
 
-- Frontend: http://localhost:3000
-- Backend API: http://localhost:8000
-- API Documentation (Swagger): http://localhost:8000/docs
-- API Documentation (ReDoc): http://localhost:8000/redoc
+| URL                          | Description                  |
+|------------------------------|------------------------------|
+| http://localhost:3000        | Frontend application         |
+| http://localhost:8000        | Backend REST API             |
+| http://localhost:8000/docs   | Swagger UI (interactive)     |
+| http://localhost:8000/redoc  | ReDoc documentation          |
+| http://localhost:8000/metrics| Prometheus metrics endpoint  |
+| http://localhost:15672       | RabbitMQ management UI       |
 
-Login credentials (if you ran seed script):
+**Default login credentials (after running seed script):**
 
 - Username: `admin@library.com`
 - Password: `admin123`
 
-You can use the Swagger UI at http://localhost:8000/docs to test all API endpoints interactively.
-
-### 7. Stop All Services
+### 8. Stop All Services
 
 ```bash
 docker-compose down
@@ -146,131 +201,162 @@ To remove all data including the database volume:
 docker-compose down -v
 ```
 
+---
+
 ## Local Development Setup
 
 ### Backend Setup
-
-1. Navigate to backend directory:
 
 ```bash
 cd backend
 ```
 
-2. Install dependencies using one of the following methods:
-
-**Option A: Using uv (Recommended)**
+**Install dependencies:**
 
 ```bash
+# Using uv (recommended)
 uv sync
-```
 
-**Option B: Using Conda**
-
-```bash
+# Using conda
 conda create -n library_env python=3.11 -y
 conda activate library_env
 pip install -r requirements.txt
 ```
 
-3. Set up environment variables:
+**Configure environment:**
 
 ```bash
 cp .env.example .env
-# Edit .env with your local database URL and secret key
+# Edit .env with your local DB URL, Redis URL, and RabbitMQ URL
 ```
 
-4. Start PostgreSQL (if not using Docker):
+**Start infrastructure (Docker only):**
 
 ```bash
-# Using Docker for PostgreSQL only
-docker run -d \
-  --name library-postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=library \
-  -p 5432:5432 \
-  postgres:15
+docker run -d --name library-postgres -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=library -p 5432:5432 postgres:15
+docker run -d --name library-redis -p 6379:6379 redis:7-alpine
+docker run -d --name library-rabbit -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 ```
 
-5. Run migrations:
+**Run migrations and start:**
 
 ```bash
-# If using uv:
 uv run alembic upgrade head
-
-# If using conda:
-alembic upgrade head
-```
-
-6. (Optional) Seed sample data:
-
-To populate the database with sample data for testing:
-
-```bash
-# If using uv:
-uv run python seed_data.py
-
-# If using conda:
-python seed_data.py
-```
-
-This will create:
-- 2 staff users (admin/admin123, staff1/staff123)
-- 10 books (8 available, 2 currently borrowed)
-- 5 members
-- 5 borrowing records (2 active, 3 returned)
-
-7. Start the backend server:
-
-```bash
-# If using uv:
 uv run fastapi dev app/main.py
-
-# If using conda:
-fastapi dev app/main.py
 ```
 
-Backend will be available at http://localhost:8000
+**Start the gRPC server (separate terminal):**
 
-Login credentials (if you ran seed script):
+```bash
+uv run python -m app.grpc_server
+# Listens on port 50052 | Prometheus metrics on port 9000
+```
 
-- Username: `admin@library.com`
-- Password: `admin123`
+Backend REST API: http://localhost:8000
+gRPC server: `localhost:50052`
 
-### Frontend Setup
-
-1. Navigate to frontend directory:
+### Frontend Setup (Next.js)
 
 ```bash
 cd frontend
-```
-
-2. Install dependencies:
-
-```bash
 npm install
-```
-
-3. Set up environment variables:
-
-```bash
 cp .env.example .env.local
-# Edit .env.local if needed
-```
-
-4. Start the development server:
-
-```bash
 npm run dev
 ```
 
-Frontend will be available at http://localhost:3000
+Frontend: http://localhost:3000
+
+### Frontend Setup (Vite)
+
+```bash
+cd frontend-vite
+npm install
+npm run dev
+```
+
+### Notification Service Setup (Go)
+
+```bash
+cd notification-service
+cp .env.example .env
+go run ./cmd/...
+```
+
+---
+
+## Project Structure
+
+```
+LibraryApp/
+│
+├── backend/
+│   ├── app/
+│   │   ├── grpc_handlers/        # gRPC service handlers (Books, Members, Borrowings, Auth)
+│   │   ├── routers/              # REST API endpoints (auth, books, members, borrowings)
+│   │   ├── repositories/         # Data access layer (protocol-defined interfaces + PG implementations)
+│   │   ├── services/             # Business logic layer
+│   │   ├── models.py             # SQLAlchemy ORM models
+│   │   ├── schemas.py            # Pydantic request/response schemas
+│   │   ├── database.py           # Async DB engine and session management
+│   │   ├── redis_client.py       # Redis cache helpers (get/set/delete/invalidate)
+│   │   ├── grpc_server.py        # gRPC server entry point
+│   │   ├── config.py             # Pydantic Settings configuration
+│   │   ├── exceptions.py         # Custom domain exceptions
+│   │   ├── dependencies.py       # FastAPI dependency injection
+│   │   └── main.py               # FastAPI app entry point
+│   ├── alembic/                  # Database migration scripts
+│   ├── protos/                   # .proto files + generated Python stubs
+│   ├── pubsub/                   # RabbitMQ connection and topology setup
+│   ├── seed_data.py              # Database seeding script
+│   ├── test_grpc_client.py       # gRPC integration test client
+│   ├── pyproject.toml
+│   └── Dockerfile
+│
+├── notification-service/         # Go microservice
+│   ├── cmd/                      # Entry point
+│   └── internal/
+│       ├── config/               # Environment config
+│       ├── handler/              # RabbitMQ message handler
+│       ├── models/               # Event models
+│       ├── notifier/             # Email + SMS notification stubs
+│       └── rabbitmq/             # Consumer setup
+│
+├── frontend/                     # Next.js frontend
+│   ├── src/
+│   │   ├── app/                  # Next.js App Router pages (login, register, admin)
+│   │   ├── components/           # Reusable React components
+│   │   ├── context/              # AuthContext provider
+│   │   └── lib/                  # API client (Axios) and TypeScript types
+│   └── Dockerfile
+│
+├── frontend-vite/                # Vite + React alternative frontend
+│   └── src/
+│       ├── pages/                # Page components
+│       ├── components/           # Shared UI components
+│       ├── services/             # API service layer
+│       └── context/              # Auth context
+│
+├── benchmarks/
+│   ├── benchmark_rest.py         # REST API load test
+│   ├── benchmark_grpc.py         # gRPC load test
+│   └── benchmark_redis.py        # Redis cache latency test
+│
+├── monitoring/
+│   └── prometheus.yml            # Prometheus scrape configuration
+│
+├── prometheus/                   # Prometheus data (volume mount)
+├── definitions.json              # RabbitMQ topology definitions
+├── rabbitmq.conf                 # RabbitMQ configuration
+└── docker-compose.yml
+```
+
+---
 
 ## API Documentation
 
 ### Authentication
 
-All endpoints except /api/auth/login and /api/books require authentication. Use the `/api/auth/login` endpoint to obtain a JWT token.
+All endpoints except `GET /api/books` and `POST /api/auth/login` require a valid JWT Bearer token.
 
 **Login:**
 
@@ -278,7 +364,7 @@ All endpoints except /api/auth/login and /api/books require authentication. Use 
 POST /api/auth/login
 Content-Type: application/x-www-form-urlencoded
 
-username=admin&password=admin123
+username=admin@library.com&password=admin123
 ```
 
 Response:
@@ -292,247 +378,257 @@ Response:
 
 Use the token in subsequent requests:
 
-```bash
+```
 Authorization: Bearer <access_token>
 ```
 
-### Books Endpoints
+### Endpoints Reference
 
-- `GET /api/books` - List all books (supports filtering by title and author)
-- `GET /api/books/{id}` - Get book by ID
-- `POST /api/books` - Create new book
-- `PUT /api/books/{id}` - Update book
-- `DELETE /api/books/{id}` - Delete book (if not borrowed or has no borrowing history)
+#### Auth
+| Method | Endpoint           | Auth | Description              |
+|--------|--------------------|------|--------------------------|
+| POST   | `/api/auth/register` | No  | Register a new staff user |
+| POST   | `/api/auth/login`    | No  | Login (returns JWT)       |
+| GET    | `/api/auth/me`       | Yes | Get current staff user    |
 
-### Members Endpoints
+#### Books
+| Method | Endpoint          | Auth | Description                         |
+|--------|-------------------|------|-------------------------------------|
+| GET    | `/api/books`      | No   | List all books (filter by title/author, Redis cached) |
+| GET    | `/api/books/{id}` | Yes  | Get book by ID (Redis cached)       |
+| POST   | `/api/books`      | Yes  | Create new book (invalidates cache) |
+| PUT    | `/api/books/{id}` | Yes  | Update book (invalidates cache)     |
+| DELETE | `/api/books/{id}` | Yes  | Delete book (if no borrow history)  |
 
-- `GET /api/members` - List all members
-- `GET /api/members/{id}` - Get member by ID
-- `POST /api/members` - Create new member
-- `PUT /api/members/{id}` - Update member
-- `DELETE /api/members/{id}` - Delete member (only if no borrowing history)
+#### Members
+| Method | Endpoint            | Auth | Description                          |
+|--------|---------------------|------|--------------------------------------|
+| GET    | `/api/members`      | Yes  | List all members                     |
+| GET    | `/api/members/{id}` | Yes  | Get member by ID                     |
+| POST   | `/api/members`      | Yes  | Create new member                    |
+| PUT    | `/api/members/{id}` | Yes  | Update member                        |
+| DELETE | `/api/members/{id}` | Yes  | Delete member (if no borrow history) |
 
-### Borrowing Endpoints
+#### Borrowings
+| Method | Endpoint                            | Auth | Description                      |
+|--------|-------------------------------------|------|----------------------------------|
+| GET    | `/api/borrowings`                   | Yes  | List active borrowings           |
+| GET    | `/api/borrowings/history`           | Yes  | Full borrowing history           |
+| GET    | `/api/borrowings/members/{id}`      | Yes  | Borrowings for a specific member |
+| POST   | `/api/borrowings/borrow`            | Yes  | Borrow a book (publishes event)  |
+| PUT    | `/api/borrowings/{id}/return`       | Yes  | Return a book (publishes event)  |
 
-- `POST /api/borrowings/borrow` - Borrow a book
-- `PUT /api/borrowings/{id}/return` - Return a borrowed book
-- `GET /api/borrowings` - List all active borrowings
-- `GET /api/borrowings/history` - Get complete borrowing history
-- `GET /api/borrowings/members/{member_id}` - Get borrowings for a specific member
+For full request/response schemas, visit http://localhost:8000/docs after starting the backend.
 
-For detailed API documentation with request/response schemas, visit http://localhost:8000/docs after starting the backend.
+---
+
+## gRPC Server
+
+The project includes a parallel gRPC implementation exposing the same domain logic. It runs as a separate process on port **50052** and exposes Prometheus metrics on port **9000**.
+
+**Proto services defined:**
+- `AuthService` — Login + token generation
+- `BookService` — Full CRUD
+- `MemberService` — Full CRUD
+- `BorrowingService` — Borrow, return, list, history
+
+**Server reflection** is enabled — you can introspect services with `grpcurl` without needing the `.proto` files:
+
+```bash
+grpcurl -plaintext localhost:50052 list
+```
+
+**Run the gRPC client test:**
+
+```bash
+cd backend
+uv run python test_grpc_client.py
+```
+
+---
+
+## Redis Caching
+
+Redis is used for response caching on book endpoints. Cached responses are automatically invalidated on any write operation (create/update/delete).
+
+| Operation              | Cache Behavior              |
+|------------------------|-----------------------------|
+| `GET /api/books`       | Cache hit after first fetch |
+| `GET /api/books/{id}`  | Cache hit after first fetch |
+| `POST /api/books`      | Invalidates list cache      |
+| `PUT /api/books/{id}`  | Invalidates item + list     |
+| `DELETE /api/books/{id}` | Invalidates item + list   |
+
+Run the Redis cache benchmark:
+
+```bash
+cd benchmarks
+python benchmark_redis.py
+```
+
+---
 
 ## Database Schema
 
+### Entity Relationship
+
+```
+BOOKS ────< BORROWING_RECORDS >──── MEMBERS
+              (book_id FK)             
+              (member_id FK)          STAFFS (independent)
+```
+
 ### Tables
 
-**books**
+**`books`** — `id`, `title`, `author`, `isbn (UNIQUE)`, `description`, `is_available`, `created_at`, `updated_at`
 
-- id (Primary Key)
-- title
-- author
-- isbn (Unique)
-- description
-- is_available (Boolean)
-- created_at
-- updated_at
+**`members`** — `id`, `name`, `email (UNIQUE)`, `phone (UNIQUE)`, `created_at`, `updated_at`
 
-**members**
+**`borrowing_records`** — `id`, `book_id (FK)`, `member_id (FK)`, `borrowed_date`, `returned_date`, `created_at`, `updated_at`
+- `due_date` — computed property: `borrowed_date + 14 days`
+- `status` — computed property: `"BORROWED"` | `"RETURNED"`
 
-- id (Primary Key)
-- name
-- email (Unique)
-- phone (Unique)
-- created_at
-- updated_at
+**`staffs`** — `id`, `username (UNIQUE)`, `email (UNIQUE)`, `hashed_password`, `full_name`, `created_at`
 
-**borrowing_records**
-
-- id (Primary Key)
-- book_id (Foreign Key to books)
-- member_id (Foreign Key to members)
-- borrowed_date
-- returned_date (NULL if not returned)
-- created_at
-- updated_at
-
-**staffs**
-
-- id (Primary Key)
-- username (Unique)
-- email (Unique)
-- hashed_password
-- full_name
-- created_at
+---
 
 ## Testing
 
-This application uses **manual testing** via interactive API documentation and tools.
+### Interactive API Testing (Swagger UI)
 
-### API Testing with Swagger UI
+1. Start the backend
+2. Open http://localhost:8000/docs
+3. Run seed data: `docker-compose exec backend uv run python seed_data.py`
+4. Click **Authorize** → login with `admin@library.com` / `admin123`
+5. Test all endpoints interactively
 
-The easiest way to test all API endpoints is through the built-in Swagger UI:
+### Alternative: Postman
 
-1. Start the backend server (locally or via Docker)
-2. Navigate to http://localhost:8000/docs
-3. Use the seed data to populate the database with test data:
-   ```bash
-   # Docker:
-   docker-compose exec backend uv run python seed_data.py
-   
-   # Local:
-   python seed_data.py
-   ```
-4. Click "Authorize" in Swagger UI and login with:
-   - Username: `admin@library.com`
-   - Password: `admin123`
-5. Test all endpoints interactively with the pre-populated sample data
+Import the OpenAPI schema from http://localhost:8000/openapi.json into Postman.
 
-### Alternative: Testing with Postman
+### gRPC Testing
 
-You can also import the API endpoints into Postman:
-
-1. Use the OpenAPI schema from http://localhost:8000/openapi.json
-2. Import into Postman
-3. Set up authentication with the credentials above
-4. Test all endpoints with the sample data from seed_data.py
-
-### Sample Test Data
-
-After running `seed_data.py`, you'll have:
-- 2 staff users (admin@library.com, staff1@library.com)
-- 10 books (IDs 1-10, with IDs 5 and 8 currently borrowed)
-- 5 members (IDs 1-5)
-- 5 borrowing records (2 active, 3 returned)
-
-## Project Structure
-
+```bash
+cd backend
+uv run python test_grpc_client.py
 ```
-LibraryApp/
 
-├── backend/
-│   ├── app/
-│   │   ├── grpc_handlers/    # gRPC endpoints
-│   │   ├── routers/          # REST API endpoints
-│   │   ├── models.py         # Database models
-│   │   ├── schemas.py        # Pydantic schemas
-│   │   ├── database.py       # Database connection
-│   │   ├── config.py         # Configuration
-│   │   ├── utils.py          # Utility functions
-│   │   └── main.py           # FastAPI application
-│   ├── alembic/              # Database migrations
-│   ├── protos/               # Proto files
-│   ├── Dockerfile
-│   ├── seed_data.py          # Seed Data
-│   ├── requirements.txt
-│   └── pyproject.toml
-├── benchmarks/
-│   ├── benchmark_rest.py
-│   └── benchmark_grpc.py
-├── monitoring/
-│   └── prometheus.yml
-├── frontend/
-│   ├── src/
-│   │   ├── app/              # Next.js pages
-│   │   ├── components/       # React components
-│   │   ├── lib/              # Utilities and API client
-│   │   └── types/            # TypeScript types
-│   ├── public/               # Static assets
-│   ├── Dockerfile
-│   └── package.json
-└── docker-compose.yml
+### Redis Cache Benchmark
+
+```bash
+python benchmarks/benchmark_redis.py
 ```
+
+---
 
 ## Performance Comparison
-For this simple backend REST outforms gRPC by a good margin and that is evident by the test results.
 
-Benchmark setup: 50 users, 20 requests/user
+Benchmark setup: **50 concurrent users, 20 requests/user (1,100 total requests)**
 
-METRIC | FastAPI (async) | gRPC (100 workers)
----|---|---
-Total Requests| 1100 | 1100
-Total Time(s) | 12.27 | 50.99
-Throughput(req/s) | 89.67 | 21.57
-Avg Latency(ms) | 486.52 | 2312.18
-P95 Latency(ms) | 2355.10 | 16183.18
+| Metric              | FastAPI REST (async) | gRPC (100 workers) |
+|---------------------|----------------------|--------------------|
+| Total Requests      | 1,100                | 1,100              |
+| Total Time (s)      | 12.27                | 50.99              |
+| Throughput (req/s)  | 89.67                | 21.57              |
+| Avg Latency (ms)    | 486.52               | 2,312.18           |
+| P95 Latency (ms)    | 2,355.10             | 16,183.18          |
+
+> For this simple CRUD workload, async FastAPI REST significantly outperforms the gRPC server, owing mostly to the overhead of thread-pool-based gRPC handling for I/O-bound operations at this scale.
+
+---
+
+## Environment Variables Reference
+
+### Backend (`.env` / `.env.docker`)
+
+| Variable                    | Description                                | Default  |
+|-----------------------------|--------------------------------------------|----------|
+| `SECRET_KEY`                | JWT signing secret (required)              | —        |
+| `DATABASE_URL`              | PostgreSQL connection string (required)    | —        |
+| `REDIS_URL`                 | Redis connection string                    | —        |
+| `RABBITMQ_URL`              | RabbitMQ AMQP connection string            | —        |
+| `ALGORITHM`                 | JWT algorithm                              | `HS256`  |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Token TTL                               | `30`     |
+
+### Frontend (`.env.docker`)
+
+| Variable                | Description                      |
+|-------------------------|----------------------------------|
+| `NEXT_PUBLIC_API_URL`   | Backend REST API base URL        |
+
+### Notification Service (`.env.docker`)
+
+| Variable        | Description                   |
+|-----------------|-------------------------------|
+| `RABBITMQ_URL`  | RabbitMQ AMQP connection URL  |
+
+---
+
+## Docker Commands Reference
+
+```bash
+# Start all services
+docker-compose up -d --build
+
+# Rebuild and restart a single service
+docker-compose up -d --build <service-name>
+
+# View logs for a service
+docker-compose logs -f <service-name>
+
+# Execute a command in a running container
+docker-compose exec <service-name> <command>
+
+# Stop all services (preserve data)
+docker-compose down
+
+# Stop all services and remove volumes
+docker-compose down -v
+```
+
+---
 
 ## Troubleshooting
 
 ### Database Connection Issues
 
-If the backend cannot connect to PostgreSQL:
-
-1. Ensure PostgreSQL is running:
-
 ```bash
-docker-compose ps
+docker-compose ps          # Check service status
+docker-compose logs postgres   # View PostgreSQL logs
 ```
 
-2. Check PostgreSQL logs:
+Verify `DATABASE_URL` in `backend/.env.docker` matches the PostgreSQL service config.
+
+### Redis Not Caching
+
+Ensure `REDIS_URL` is set and the `redis` service is healthy:
 
 ```bash
-docker-compose logs postgres
+docker-compose logs redis
 ```
 
-3. Verify DATABASE_URL in backend/.env.docker matches the PostgreSQL service configuration
+### RabbitMQ Events Not Consumed
+
+Check that both `backend` and `notification-service` are connected to `library-network`:
+
+```bash
+docker-compose logs rabbit
+docker-compose logs notification-service
+```
+
+Access the RabbitMQ management UI at http://localhost:15672 (user: `guest`, password: `guest`) to inspect queues and message flow.
 
 ### Port Conflicts
 
-If ports 3000, 5432, or 8000 are already in use:
-
-1. Stop the conflicting service, or
-2. Modify the port mappings in docker-compose.yml
+If ports 3000, 5432/5433, 6379, 5672, or 15672 are in use, modify the port mappings in `docker-compose.yml`.
 
 ### Frontend Cannot Connect to Backend
 
-1. Verify backend is running on port 8000
-2. Check NEXT_PUBLIC_API_URL in frontend/.env.docker
+- Ensure backend port 8000 is exposed (uncomment in `docker-compose.yml`)
+- Verify `NEXT_PUBLIC_API_URL` in `frontend/.env.docker`
 
-## Environment Variables Reference
-
-### Backend (.env.docker)
-
-- `SECRET_KEY` - Secret key for JWT token signing (required)
-- `DATABASE_URL` - PostgreSQL connection string (required)
-- `ALGORITHM` - JWT algorithm (default: HS256)
-- `ACCESS_TOKEN_EXPIRE_MINUTES` - Token expiration time (default: 30)
-
-### Frontend (.env.docker)
-
-- `NEXT_PUBLIC_API_URL` - Backend API base URL (required)
-
-## Docker Commands Reference
-
-### Rebuild and restart a single service:
-
-```bash
-docker-compose up -d --build <service-name>
-```
-
-### View logs for a service:
-
-```bash
-docker-compose logs -f <service-name>
-```
-
-### Execute command in a running container:
-
-```bash
-docker-compose exec <service-name> <command>
-```
-
-### Stop all services:
-
-```bash
-docker-compose down
-```
-
-### Remove all data including volumes:
-
-```bash
-docker-compose down -v
-```
+---
 
 ## License
 
-Simple Neighborhood Library App to test performance between REST API and gRPC endpoints.
+Simple Neighborhood Library App built to compare REST and gRPC performance, and to explore infrastructure layers including Redis caching, RabbitMQ pub/sub messaging, and Prometheus observability.
